@@ -234,23 +234,26 @@ class InitCommand : CliktCommand(name = "init") {
 
         val moduleOptions = listOf(
             "Authentication ${KFireTerminal.muted("— Sign-in with Email, Google, Apple, Phone")}",
-            "Firestore ${KFireTerminal.muted("— NoSQL cloud database with offline sync")}"
+            "Firestore ${KFireTerminal.muted("— NoSQL cloud database with offline sync")}",
+            "Storage ${KFireTerminal.muted("— File uploads, downloads, and cloud storage")}"
         )
 
         val selectedIndices = KFireTerminal.multiSelect(
             "Which Firebase services do you need?",
             moduleOptions,
-            setOf(0, 1) // Default: select both
+            setOf(0, 1) // Default: select Auth and Firestore
         )
 
         val useAuth = 0 in selectedIndices
         val useFirestore = 1 in selectedIndices
+        val useStorage = 2 in selectedIndices
 
         KFireTerminal.blank()
         KFireTerminal.box("Selected Modules", buildList {
             add("${KFireTerminal.success("✓")} Core ${KFireTerminal.muted("(always included)")}")
             if (useAuth) add("${KFireTerminal.success("✓")} Authentication")
             if (useFirestore) add("${KFireTerminal.success("✓")} Firestore")
+            if (useStorage) add("${KFireTerminal.success("✓")} Storage")
         }, KFireTerminal.BoxStyle.SUCCESS)
 
         // ═══════════════════════════════════════════════════════════════════
@@ -322,7 +325,8 @@ class InitCommand : CliktCommand(name = "init") {
             val modules = GradleConfigGenerator.FirebaseModules(
                 core = true,
                 auth = useAuth,
-                firestore = useFirestore
+                firestore = useFirestore,
+                storage = useStorage
             )
 
             val modified = gradleGenerator.configureGradle(modules)
@@ -341,7 +345,7 @@ class InitCommand : CliktCommand(name = "init") {
         spinnerSample.start()
         delay(300)
 
-        generateSampleCode(useAuth, useFirestore)
+        generateSampleCode(useAuth, useFirestore, useStorage)
         spinnerSample.success("Sample code created ${KFireTerminal.muted("→ FirebaseInit.kt")}")
 
         // ═══════════════════════════════════════════════════════════════════
@@ -365,7 +369,8 @@ class InitCommand : CliktCommand(name = "init") {
                     if (detectedIos != null) listOf("iOS", KFireTerminal.success("✓ Configured")) else null,
                     listOf("Core Module", KFireTerminal.success("✓ Added")),
                     if (useAuth) listOf("Auth Module", KFireTerminal.success("✓ Added")) else null,
-                    if (useFirestore) listOf("Firestore Module", KFireTerminal.success("✓ Added")) else null
+                    if (useFirestore) listOf("Firestore Module", KFireTerminal.success("✓ Added")) else null,
+                    if (useStorage) listOf("Storage Module", KFireTerminal.success("✓ Added")) else null
                 )
             )
 
@@ -389,6 +394,11 @@ class InitCommand : CliktCommand(name = "init") {
                     appendLine("// Get Firestore instance")
                     appendLine("val db = FirebaseInit.firestore")
                 }
+                if (useStorage) {
+                    appendLine()
+                    appendLine("// Get Storage instance")
+                    appendLine("val storage = FirebaseInit.storage")
+                }
             }.trim())
 
         } else {
@@ -399,7 +409,7 @@ class InitCommand : CliktCommand(name = "init") {
         }
     }
 
-    private fun generateSampleCode(useAuth: Boolean, useFirestore: Boolean) {
+    private fun generateSampleCode(useAuth: Boolean, useFirestore: Boolean, useStorage: Boolean) {
         // Find the correct commonMain location based on project structure
         val possibleLocations = listOf(
             "demo/shared/src/commonMain/kotlin/firebase",
@@ -426,6 +436,9 @@ class InitCommand : CliktCommand(name = "init") {
             }
             if (useFirestore) {
                 appendLine("import com.riadmahi.firebase.firestore.FirebaseFirestore")
+            }
+            if (useStorage) {
+                appendLine("import com.riadmahi.firebase.storage.FirebaseStorage")
             }
             appendLine()
         }
@@ -479,6 +492,18 @@ class InitCommand : CliktCommand(name = "init") {
                 appendLine("        get() {")
                 appendLine("            check(initialized) { \"Call initialize() first\" }")
                 appendLine("            return FirebaseFirestore.getInstance()")
+                appendLine("        }")
+                appendLine()
+            }
+
+            if (useStorage) {
+                appendLine("    /**")
+                appendLine("     * Get the Firebase Storage instance.")
+                appendLine("     */")
+                appendLine("    val storage: FirebaseStorage")
+                appendLine("        get() {")
+                appendLine("            check(initialized) { \"Call initialize() first\" }")
+                appendLine("            return FirebaseStorage.getInstance()")
                 appendLine("        }")
                 appendLine()
             }
