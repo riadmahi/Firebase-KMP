@@ -18,14 +18,31 @@
 
 ## Quick Start
 
-### 1. Install the CLI
+### 1. Prerequisites
+
+**Firebase CLI:**
+
+```bash
+npm install -g firebase-tools
+firebase login
+```
+
+**Firebase Project:**
+
+Go to [console.firebase.google.com](https://console.firebase.google.com) and create a project:
+1. Click "Add project" and enter your project name
+2. When asked to add an app, **select Flutter**
+3. Skip all the Flutter setup steps (we'll use KFire instead)
+4. Your project is ready
+
+### 2. Install KFire CLI
 
 ```bash
 ./gradlew :firebase-cli:installDist
 sudo ln -sf $(pwd)/firebase-cli/build/install/kfire/bin/kfire /usr/local/bin/kfire
 ```
 
-### 2. Run the Setup Wizard
+### 3. Run the Setup Wizard
 
 ```bash
 kfire init
@@ -72,7 +89,7 @@ kfire init
 🎉 Firebase configured successfully!
 ```
 
-### 3. Start Using Firebase
+### 4. Start Using Firebase
 
 ```kotlin
 // Initialize once at app startup
