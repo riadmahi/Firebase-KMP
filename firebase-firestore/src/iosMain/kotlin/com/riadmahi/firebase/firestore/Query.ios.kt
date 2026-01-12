@@ -2,9 +2,8 @@
 
 package com.riadmahi.firebase.firestore
 
-import cocoapods.FirebaseFirestore.FIRQuery
-import cocoapods.FirebaseFirestore.FIRQuerySnapshot
-import cocoapods.FirebaseFirestore.FIRSnapshotListenOptions
+import cocoapods.FirebaseFirestoreInternal.FIRQuery
+import cocoapods.FirebaseFirestoreInternal.FIRQuerySnapshot
 import com.riadmahi.firebase.core.FirebaseResult
 import com.riadmahi.firebase.core.util.awaitResult
 import kotlinx.coroutines.channels.awaitClose
@@ -24,12 +23,12 @@ actual open class Query internal constructor(
                     callback(snap, error)
                 }
                 Source.SERVER -> ios.getDocumentsWithSource(
-                    cocoapods.FirebaseFirestore.FIRFirestoreSource.FIRFirestoreSourceServer
+                    cocoapods.FirebaseFirestoreInternal.FIRFirestoreSource.FIRFirestoreSourceServer
                 ) { snap, error ->
                     callback(snap, error)
                 }
                 Source.CACHE -> ios.getDocumentsWithSource(
-                    cocoapods.FirebaseFirestore.FIRFirestoreSource.FIRFirestoreSourceCache
+                    cocoapods.FirebaseFirestoreInternal.FIRFirestoreSource.FIRFirestoreSourceCache
                 ) { snap, error ->
                     callback(snap, error)
                 }
@@ -39,24 +38,21 @@ actual open class Query internal constructor(
     }
 
     actual fun snapshots(includeMetadataChanges: Boolean): Flow<QuerySnapshot> = callbackFlow {
-        val options = FIRSnapshotListenOptions().apply {
-            this.includeMetadataChanges = includeMetadataChanges
-        }
-        val registration = ios.addSnapshotListenerWithOptions(options) { snapshot, error ->
+        val registration = ios.addSnapshotListenerWithIncludeMetadataChanges(includeMetadataChanges) { snapshot, error ->
             if (error != null) {
                 close(Exception(error.localizedDescription))
-                return@addSnapshotListenerWithOptions
+                return@addSnapshotListenerWithIncludeMetadataChanges
             }
             snapshot?.let { trySend(QuerySnapshot(it)) }
         }
-        awaitClose { registration.remove() }
+        awaitClose { registration?.remove() }
     }
 
     actual fun whereEqualTo(field: String, value: Any?): Query =
-        Query(ios.queryWhereField(field, isEqualTo = value))
+        Query(ios.queryWhereField(field, isEqualTo = value ?: platform.Foundation.NSNull()))
 
     actual fun whereNotEqualTo(field: String, value: Any?): Query =
-        Query(ios.queryWhereField(field, isNotEqualTo = value))
+        Query(ios.queryWhereField(field, isNotEqualTo = value ?: platform.Foundation.NSNull()))
 
     actual fun whereLessThan(field: String, value: Any): Query =
         Query(ios.queryWhereField(field, isLessThan = value))
@@ -84,10 +80,10 @@ actual open class Query internal constructor(
 
     // FieldPath overloads
     actual fun whereEqualTo(fieldPath: FieldPath, value: Any?): Query =
-        Query(ios.queryWhereFieldPath(fieldPath.ios, isEqualTo = value))
+        Query(ios.queryWhereFieldPath(fieldPath.ios, isEqualTo = value ?: platform.Foundation.NSNull()))
 
     actual fun whereNotEqualTo(fieldPath: FieldPath, value: Any?): Query =
-        Query(ios.queryWhereFieldPath(fieldPath.ios, isNotEqualTo = value))
+        Query(ios.queryWhereFieldPath(fieldPath.ios, isNotEqualTo = value ?: platform.Foundation.NSNull()))
 
     actual fun whereLessThan(fieldPath: FieldPath, value: Any): Query =
         Query(ios.queryWhereFieldPath(fieldPath.ios, isLessThan = value))
