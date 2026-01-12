@@ -1,47 +1,47 @@
-# firebase-core
+# Firebase Core
 
-Core module for Firebase initialization in Kotlin Multiplatform projects.
+The foundation module required by all KFire services.
 
 ## Installation
 
 ```kotlin
 // build.gradle.kts
-kotlin {
-    sourceSets {
-        commonMain.dependencies {
-            implementation("com.riadmahi.firebase:firebase-core:1.0.0")
-        }
-    }
+commonMain.dependencies {
+    implementation("com.riadmahi.firebase:firebase-core:1.0.0")
 }
 ```
 
-## Main Classes
+## Usage
 
-### FirebaseApp
-
-Entry point for Firebase initialization.
+### Initialize Firebase
 
 ```kotlin
 import com.riadmahi.firebase.core.FirebaseApp
-import com.riadmahi.firebase.core.FirebaseOptions
 
-// Default initialization
+// Default initialization (uses google-services.json / GoogleService-Info.plist)
 val app = FirebaseApp.initialize()
+```
 
-// With custom options
-val options = FirebaseOptions(
-    apiKey = "AIza...",
-    applicationId = "1:123456789:android:abc123",
-    projectId = "my-project",
-    storageBucket = "my-project.appspot.com",
-    gcmSenderId = "123456789"
-)
-val app = FirebaseApp.initialize(options)
+### Custom Configuration
 
-// With custom name
+```kotlin
+import com.riadmahi.firebase.core.firebaseOptions
+
+val app = FirebaseApp.initialize(firebaseOptions {
+    apiKey = "AIza..."
+    applicationId = "1:123456789:android:abc123"
+    projectId = "my-project"
+    storageBucket = "my-project.appspot.com"
+})
+```
+
+### Named App Instance
+
+```kotlin
+// Create a secondary app instance
 val secondaryApp = FirebaseApp.initialize(options, "secondary")
 
-// Get instance
+// Get instances
 val defaultApp = FirebaseApp.getInstance()
 val namedApp = FirebaseApp.getInstance("secondary")
 
@@ -52,103 +52,18 @@ val allApps: List<FirebaseApp> = FirebaseApp.apps
 app.delete()
 ```
 
-### FirebaseOptions
+## API Reference
 
-Firebase project configuration.
+| Method | Description |
+|--------|-------------|
+| `FirebaseApp.initialize()` | Initialize with default config files |
+| `FirebaseApp.initialize(options)` | Initialize with custom options |
+| `FirebaseApp.initialize(options, name)` | Initialize a named instance |
+| `FirebaseApp.getInstance()` | Get the default instance |
+| `FirebaseApp.getInstance(name)` | Get a named instance |
+| `FirebaseApp.apps` | List all initialized apps |
+| `app.delete()` | Delete the app instance |
 
-```kotlin
-data class FirebaseOptions(
-    val apiKey: String,           // Web API Key
-    val applicationId: String,    // App ID (Android/iOS)
-    val projectId: String,        // Firebase project ID
-    val databaseUrl: String? = null,
-    val storageBucket: String? = null,
-    val gcmSenderId: String? = null
-)
-```
+## See Also
 
-### FirebaseResult
-
-Wrapper for async operation results.
-
-```kotlin
-sealed class FirebaseResult<out T> {
-    data class Success<T>(val data: T) : FirebaseResult<T>()
-    data class Failure(val exception: FirebaseException) : FirebaseResult<Nothing>()
-}
-
-// Usage
-when (val result = someOperation()) {
-    is FirebaseResult.Success -> {
-        val data = result.data
-    }
-    is FirebaseResult.Failure -> {
-        val error = result.exception
-    }
-}
-
-// Helpers
-result.getOrNull()              // T?
-result.getOrDefault(defaultVal) // T
-result.getOrElse { fallback }   // T
-result.isSuccess                // Boolean
-result.isFailure                // Boolean
-```
-
-### FirebaseException
-
-Base class for Firebase exceptions.
-
-```kotlin
-open class FirebaseException(
-    override val message: String,
-    override val cause: Throwable? = null
-) : Exception(message, cause)
-```
-
-## expect/actual Architecture
-
-```kotlin
-// commonMain/FirebaseApp.kt
-expect class FirebaseApp {
-    val name: String
-    val options: FirebaseOptions
-    fun delete()
-
-    companion object {
-        val DEFAULT_APP_NAME: String
-        fun initialize(): FirebaseApp
-        fun initialize(options: FirebaseOptions): FirebaseApp
-        fun initialize(options: FirebaseOptions, name: String): FirebaseApp
-        fun getInstance(): FirebaseApp
-        fun getInstance(name: String): FirebaseApp
-        val apps: List<FirebaseApp>
-    }
-}
-
-// androidMain - delegates to com.google.firebase.FirebaseApp
-// iosMain - delegates to FIRApp (Firebase iOS SDK)
-```
-
-## Platform Configuration
-
-### Android
-
-Add `google-services.json` in `composeApp/src/androidMain/`:
-
-```
-composeApp/
-└── src/
-    └── androidMain/
-        └── google-services.json
-```
-
-### iOS
-
-Add `GoogleService-Info.plist` in the Xcode project:
-
-```
-iosApp/
-└── iosApp/
-    └── GoogleService-Info.plist
-```
+- [Firebase Documentation](https://firebase.google.com/docs/reference/kotlin/com/google/firebase/FirebaseApp)
