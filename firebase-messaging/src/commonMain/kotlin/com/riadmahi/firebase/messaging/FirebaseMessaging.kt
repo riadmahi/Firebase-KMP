@@ -177,7 +177,7 @@ data class RemoteMessage(
 sealed class MessagingException(
     message: String,
     cause: Throwable? = null
-) : Exception(message, cause) {
+) : com.riadmahi.firebase.core.FirebaseException(message, cause) {
 
     /**
      * The token could not be retrieved.
