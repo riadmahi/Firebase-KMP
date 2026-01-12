@@ -1,33 +1,30 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.riadmahi.firebase.firestore
 
+import cocoapods.FirebaseFirestoreInternal.FIRFieldPath
+
 /**
- * iOS implementation of FieldPath.
- *
- * Note: FieldPath is used for query operations and document field access.
+ * iOS implementation of FieldPath using Firebase iOS SDK.
  */
 actual class FieldPath private constructor(
-    internal val fieldNames: List<String>,
-    internal val isDocumentId: Boolean = false
+    internal val ios: FIRFieldPath
 ) {
     actual companion object {
         actual fun of(vararg fieldNames: String): FieldPath =
-            FieldPath(fieldNames.toList())
+            FieldPath(FIRFieldPath(fields = fieldNames.toList()))
 
         actual fun documentId(): FieldPath =
-            FieldPath(emptyList(), isDocumentId = true)
+            FieldPath(FIRFieldPath.documentID())
     }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is FieldPath) return false
-        return fieldNames == other.fieldNames && isDocumentId == other.isDocumentId
+        return ios == other.ios
     }
 
-    override fun hashCode(): Int {
-        var result = fieldNames.hashCode()
-        result = 31 * result + isDocumentId.hashCode()
-        return result
-    }
+    override fun hashCode(): Int = ios.hashCode()
 
-    override fun toString(): String = if (isDocumentId) "__name__" else fieldNames.joinToString(".")
+    override fun toString(): String = ios.toString()
 }
