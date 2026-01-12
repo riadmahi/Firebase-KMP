@@ -18,31 +18,66 @@
 
 ## Quick Start
 
-### 1. Add Dependencies
+### 1. Install the CLI
 
-```kotlin
-// build.gradle.kts
-commonMain.dependencies {
-    implementation("com.riadmahi.firebase:firebase-core:1.0.0")
-    implementation("com.riadmahi.firebase:firebase-auth:1.0.0")       // Optional
-    implementation("com.riadmahi.firebase:firebase-firestore:1.0.0") // Optional
-    implementation("com.riadmahi.firebase:firebase-storage:1.0.0")   // Optional
-    // ... add more modules as needed
-}
+```bash
+./gradlew :firebase-cli:installDist
+sudo ln -sf $(pwd)/firebase-cli/build/install/kfire/bin/kfire /usr/local/bin/kfire
 ```
 
-### 2. Initialize Firebase
+### 2. Run the Setup Wizard
 
-```kotlin
-import com.riadmahi.firebase.core.FirebaseApp
+```bash
+kfire init
+```
 
-// Uses google-services.json (Android) / GoogleService-Info.plist (iOS)
-FirebaseApp.initialize()
+```
+╭────────────────────────────────────────────────────────────╮
+│                                                            │
+│   Welcome to KFire - Firebase for Kotlin Multiplatform     │
+│                                                            │
+╰────────────────────────────────────────────────────────────╯
+
+◆ Pre-flight Checks
+
+  ✓ firebase-tools is installed
+  ✓ Authenticated as riad@example.com
+  ✓ Android: com.example.myapp
+  ✓ iOS: com.example.myapp
+
+◆ Select Firebase Project
+
+  ● my-awesome-app (my-awesome-app-12345)
+  ○ another-project (another-project-67890)
+  ○ Create a new project
+
+◆ Select Modules
+
+  ✓ Core (required)
+  ✓ Authentication
+  ✓ Firestore
+  ✓ Storage
+  ○ Messaging
+  ○ Analytics
+  ○ Remote Config
+  ○ Crashlytics
+
+◆ Generating Configuration
+
+  ✓ Created google-services.json
+  ✓ Created GoogleService-Info.plist
+  ✓ Updated build.gradle.kts
+  ✓ Generated FirebaseInit.kt
+
+🎉 Firebase configured successfully!
 ```
 
 ### 3. Start Using Firebase
 
 ```kotlin
+// Initialize once at app startup
+FirebaseApp.initialize()
+
 // Authentication
 val auth = FirebaseAuth.getInstance()
 auth.signInWithEmailAndPassword("user@example.com", "password")
@@ -76,35 +111,42 @@ storage.reference.child("images/photo.jpg").putBytes(imageData)
 
 ---
 
-## CLI Tool
-
-Configure Firebase in your KMP project with the `kfire` CLI.
+## CLI Commands
 
 ```bash
-# Install
-./gradlew :firebase-cli:installDist
-sudo ln -sf $(pwd)/firebase-cli/build/install/kfire/bin/kfire /usr/local/bin/kfire
-
-# Full setup wizard
-kfire init
-
-# Or quick configure
-kfire configure --project=my-project
+kfire init                    # Full setup wizard
+kfire configure               # Quick configuration
+kfire login                   # Authenticate with Firebase
 ```
 
-The CLI automatically:
-- Detects your Android package name and iOS bundle ID
-- Creates Firebase apps in your project
-- Generates `google-services.json` and `GoogleService-Info.plist`
-- Configures your Gradle files
+**Options:**
+
+```bash
+kfire configure \
+  --project=my-firebase-project \
+  --modules=core,auth,firestore \
+  --platforms=android,ios
+```
 
 ---
 
-## Platform Setup
+## Manual Setup
+
+<details>
+<summary>If you prefer manual configuration</summary>
+
+### Add Dependencies
+
+```kotlin
+// build.gradle.kts
+commonMain.dependencies {
+    implementation("com.riadmahi.firebase:firebase-core:1.0.0")
+    implementation("com.riadmahi.firebase:firebase-auth:1.0.0")
+    implementation("com.riadmahi.firebase:firebase-firestore:1.0.0")
+}
+```
 
 ### Android
-
-Add Google Services plugin:
 
 ```kotlin
 // Root build.gradle.kts
@@ -118,9 +160,13 @@ plugins {
 }
 ```
 
+Place `google-services.json` in your Android app module.
+
 ### iOS
 
 Add Firebase via CocoaPods or SPM and place `GoogleService-Info.plist` in your Xcode project.
+
+</details>
 
 ---
 
