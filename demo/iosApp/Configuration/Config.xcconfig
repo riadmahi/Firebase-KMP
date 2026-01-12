@@ -1,3 +1,5 @@
+// Trouve ton Team ID dans Xcode: Preferences > Accounts > Apple ID > Team ID
+// Ou sur https://developer.apple.com/account -> Membership -> Team ID
 TEAM_ID=
 
 PRODUCT_NAME=Firebase
