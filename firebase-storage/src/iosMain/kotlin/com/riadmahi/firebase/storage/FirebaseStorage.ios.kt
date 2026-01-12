@@ -36,13 +36,15 @@ actual class FirebaseStorage private constructor(
         actual fun getInstance(): FirebaseStorage =
             FirebaseStorage(FIRStorage.storage())
 
+        @Suppress("UNCHECKED_CAST")
         actual fun getInstance(app: FirebaseApp): FirebaseStorage =
-            FirebaseStorage(FIRStorage.storageForApp(app.ios))
+            FirebaseStorage(FIRStorage.storageForApp(app.ios as objcnames.classes.FIRApp))
 
         actual fun getInstance(url: String): FirebaseStorage =
             FirebaseStorage(FIRStorage.storageWithURL(url))
 
+        @Suppress("UNCHECKED_CAST")
         actual fun getInstance(app: FirebaseApp, url: String): FirebaseStorage =
-            FirebaseStorage(FIRStorage.storageForApp(app.ios, URL = url))
+            FirebaseStorage(FIRStorage.storageForApp(app.ios as objcnames.classes.FIRApp, URL = url))
     }
 }
