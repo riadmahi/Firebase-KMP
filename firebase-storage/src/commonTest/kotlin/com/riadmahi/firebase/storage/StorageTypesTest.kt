@@ -37,11 +37,11 @@ class StorageTypesTest {
     }
 
     @Test
-    fun `StorageMetadata optional fields should default to null`() {
+    fun `StorageMetadata optional fields should default to null or empty`() {
         val metadata = StorageMetadata()
 
         assertNull(metadata.contentType)
-        assertNull(metadata.customMetadata)
+        assertEquals(emptyMap(), metadata.customMetadata)
         assertNull(metadata.cacheControl)
         assertNull(metadata.contentDisposition)
         assertNull(metadata.contentEncoding)
@@ -73,12 +73,12 @@ class StorageTypesTest {
     fun `UploadResult should contain bytesTransferred`() {
         val result = UploadResult(
             bytesTransferred = 1024,
-            totalByteCount = 2048,
+            totalBytes = 2048,
             metadata = null
         )
 
         assertEquals(1024, result.bytesTransferred)
-        assertEquals(2048, result.totalByteCount)
+        assertEquals(2048, result.totalBytes)
     }
 
     @Test
@@ -86,7 +86,7 @@ class StorageTypesTest {
         val metadata = StorageMetadata(contentType = "image/jpeg")
         val result = UploadResult(
             bytesTransferred = 2048,
-            totalByteCount = 2048,
+            totalBytes = 2048,
             metadata = metadata
         )
 
@@ -116,9 +116,9 @@ class StorageTypesTest {
 
     @Test
     fun `StorageException ObjectNotFound should match Firebase error`() {
-        val exception = StorageException.ObjectNotFound()
+        val exception = StorageException.ObjectNotFound("test/path")
 
-        assertEquals("Object not found", exception.message)
+        assertEquals("Object not found at path: test/path", exception.message)
     }
 
     @Test
