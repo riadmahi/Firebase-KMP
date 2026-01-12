@@ -1,9 +1,7 @@
 package com.riadmahi.firebase.crashlytics
 
 import com.google.firebase.crashlytics.FirebaseCrashlytics as AndroidFirebaseCrashlytics
-import com.google.firebase.crashlytics.ktx.crashlytics
 import com.google.firebase.crashlytics.setCustomKeys
-import com.google.firebase.ktx.Firebase
 
 /**
  * Android implementation of FirebaseCrashlytics using Firebase Android SDK.
@@ -82,6 +80,6 @@ actual class FirebaseCrashlytics private constructor(
 
     actual companion object {
         actual fun getInstance(): FirebaseCrashlytics =
-            FirebaseCrashlytics(Firebase.crashlytics)
+            FirebaseCrashlytics(AndroidFirebaseCrashlytics.getInstance())
     }
 }
