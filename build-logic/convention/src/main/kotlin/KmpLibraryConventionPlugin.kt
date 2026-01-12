@@ -20,10 +20,9 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
                     freeCompilerArgs.add("-Xexpect-actual-classes")
                 }
 
-                // iOS targets disabled for now - focus on Android first
-                // To enable iOS, uncomment these and the cocoapods plugin above
-                // iosArm64()
-                // iosSimulatorArm64()
+                // iOS targets
+                iosArm64()
+                iosSimulatorArm64()
 
                 sourceSets.apply {
                     commonMain.dependencies {
