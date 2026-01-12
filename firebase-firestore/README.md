@@ -1,391 +1,187 @@
-# firebase-firestore
+# Firebase Firestore
 
-Firebase Firestore module for Kotlin Multiplatform.
+Cloud Firestore for KFire - a flexible, scalable NoSQL database.
 
 ## Installation
 
 ```kotlin
 // build.gradle.kts
-kotlin {
-    sourceSets {
-        commonMain.dependencies {
-            implementation("com.riadmahi.firebase:firebase-core:1.0.0")
-            implementation("com.riadmahi.firebase:firebase-firestore:1.0.0")
-        }
-    }
+commonMain.dependencies {
+    implementation("com.riadmahi.firebase:firebase-core:1.0.0")
+    implementation("com.riadmahi.firebase:firebase-firestore:1.0.0")
 }
 ```
 
-## Getting Started
+## Usage
+
+### Get Firestore Instance
 
 ```kotlin
 import com.riadmahi.firebase.firestore.FirebaseFirestore
-import com.riadmahi.firebase.core.FirebaseResult
 
 val db = FirebaseFirestore.getInstance()
 ```
 
-## References
-
-### Collection Reference
+### Add a Document
 
 ```kotlin
-val usersCollection = db.collection("users")
-val nestedCollection = db.collection("users/user123/posts")
-```
-
-### Document Reference
-
-```kotlin
-val userDoc = db.collection("users").document("user123")
-val autoIdDoc = db.collection("users").document() // Auto-generated ID
-```
-
-## CRUD Operations
-
-### Create / Write
-
-```kotlin
-val data = mapOf(
-    "name" to "John Doe",
-    "email" to "john@example.com",
-    "age" to 30,
-    "active" to true
+val city = mapOf(
+    "name" to "Los Angeles",
+    "state" to "CA",
+    "country" to "USA",
+    "capital" to false,
+    "population" to 3900000
 )
 
-// Add document (auto-generated ID)
-when (val result = usersCollection.add(data)) {
-    is FirebaseResult.Success -> println("Created: ${result.data.id}")
+// Auto-generated ID
+val result = db.collection("cities").add(city)
+when (result) {
+    is FirebaseResult.Success -> println("Added with ID: ${result.data.id}")
     is FirebaseResult.Failure -> println("Error: ${result.exception}")
 }
 
-// Set document (specific ID)
-userDoc.set(data)
-
-// Set with merge (update existing fields, keep others)
-userDoc.set(data, SetOptions.Merge)
-
-// Merge specific fields only
-userDoc.set(data, SetOptions.MergeFields(listOf("name", "email")))
+// Specific ID
+db.collection("cities").document("LA").set(city)
 ```
 
-### Read
+### Get a Document
 
 ```kotlin
-// Get single document
-when (val result = userDoc.get()) {
+val result = db.collection("cities").document("LA").get()
+when (result) {
     is FirebaseResult.Success -> {
         val snapshot = result.data
         if (snapshot.exists) {
-            val name = snapshot.getString("name")
-            val age = snapshot.getLong("age")
-            val data = snapshot.data
-            println("User: $name, $age years old")
+            val name: String? = snapshot.get("name")
+            val population: Long? = snapshot.get("population")
+            println("$name: $population")
         }
     }
-    is FirebaseResult.Failure -> println("Error")
+    is FirebaseResult.Failure -> println("Error: ${result.exception}")
 }
-
-// Get from cache only
-userDoc.get(Source.CACHE)
-
-// Get from server only
-userDoc.get(Source.SERVER)
 ```
 
-### Update
+### Query Documents
 
 ```kotlin
-// Update specific fields
-userDoc.update(mapOf(
-    "name" to "Jane Doe",
-    "age" to 31
-))
-```
-
-### Delete
-
-```kotlin
-userDoc.delete()
-```
-
-## Queries
-
-### Basic Queries
-
-```kotlin
-val query = db.collection("users")
-    .whereEqualTo("city", "Paris")
-    .orderBy("name", Direction.ASCENDING)
+// Get all cities in California
+val query = db.collection("cities")
+    .whereEqualTo("state", "CA")
+    .orderBy("population", Direction.DESCENDING)
     .limit(10)
 
 when (val result = query.get()) {
     is FirebaseResult.Success -> {
         result.data.documents.forEach { doc ->
-            println("${doc.id}: ${doc.data}")
+            println("${doc.id}: ${doc.get<String>("name")}")
         }
     }
-    is FirebaseResult.Failure -> println("Error")
+    is FirebaseResult.Failure -> println("Error: ${result.exception}")
 }
 ```
 
 ### Query Operators
 
 ```kotlin
-// Equality
-query.whereEqualTo("status", "active")
-query.whereNotEqualTo("status", "deleted")
-
-// Comparison
-query.whereLessThan("age", 30)
-query.whereLessThanOrEqualTo("age", 30)
-query.whereGreaterThan("age", 18)
-query.whereGreaterThanOrEqualTo("age", 18)
-
-// Array operations
-query.whereArrayContains("tags", "premium")
-query.whereArrayContainsAny("tags", listOf("premium", "vip"))
-
-// In/Not In
-query.whereIn("status", listOf("active", "pending"))
-query.whereNotIn("status", listOf("deleted", "banned"))
+db.collection("cities")
+    .whereEqualTo("capital", true)
+    .whereGreaterThan("population", 1000000)
+    .whereIn("country", listOf("USA", "Japan"))
+    .whereArrayContains("regions", "west_coast")
 ```
 
-### Ordering and Pagination
+### Real-time Updates
 
 ```kotlin
-// Order by field
-query.orderBy("createdAt", Direction.DESCENDING)
-query.orderBy("name", Direction.ASCENDING)
-
-// Limit results
-query.limit(20)
-query.limitToLast(20)
-
-// Cursor-based pagination
-query.startAt("John")
-query.startAfter("John")
-query.endAt("Mike")
-query.endBefore("Mike")
-
-// Pagination with document snapshot
-val lastDoc = previousResults.documents.last()
-query.startAfter(lastDoc)
-```
-
-## Real-time Updates
-
-### Document Listener
-
-```kotlin
-userDoc.snapshots().collect { snapshot ->
-    println("Updated: ${snapshot.data}")
-}
-
-// With metadata changes
-userDoc.snapshots(includeMetadataChanges = true).collect { snapshot ->
-    val source = if (snapshot.metadata.isFromCache) "cache" else "server"
-    println("Data from $source: ${snapshot.data}")
-}
-```
-
-### Query Listener
-
-```kotlin
-db.collection("users")
-    .whereEqualTo("active", true)
+// Listen to a document
+db.collection("cities").document("LA")
     .snapshots()
     .collect { snapshot ->
-        snapshot.documents.forEach { doc ->
-            println("${doc.id}: ${doc.data}")
+        println("Current data: ${snapshot.data()}")
+    }
+
+// Listen to a query
+db.collection("cities")
+    .whereEqualTo("state", "CA")
+    .snapshots()
+    .collect { snapshot ->
+        snapshot.documentChanges.forEach { change ->
+            when (change.type) {
+                DocumentChangeType.ADDED -> println("New city: ${change.document.id}")
+                DocumentChangeType.MODIFIED -> println("Modified: ${change.document.id}")
+                DocumentChangeType.REMOVED -> println("Removed: ${change.document.id}")
+            }
         }
     }
 ```
 
-## FieldValue Operations
+### Update a Document
 
 ```kotlin
-import com.riadmahi.firebase.firestore.FieldValue
+db.collection("cities").document("LA").update(
+    mapOf(
+        "population" to 4000000,
+        "lastUpdated" to FieldValue.serverTimestamp()
+    )
+)
 
-userDoc.update(mapOf(
-    // Server timestamp
-    "updatedAt" to FieldValue.serverTimestamp(),
-
-    // Increment number
-    "loginCount" to FieldValue.increment(1),
-    "balance" to FieldValue.increment(-10.5),
-
-    // Array operations
-    "tags" to FieldValue.arrayUnion("premium", "verified"),
-    "oldTags" to FieldValue.arrayRemove("free"),
-
-    // Delete field
-    "temporaryField" to FieldValue.delete()
-))
+// Field operations
+db.collection("cities").document("LA").update(
+    mapOf(
+        "population" to FieldValue.increment(50000),
+        "regions" to FieldValue.arrayUnion("downtown")
+    )
+)
 ```
 
-## Transactions
-
-Atomic read-then-write operations.
+### Delete a Document
 
 ```kotlin
-when (val result = db.runTransaction { transaction ->
-    val snapshot = transaction.get(userDoc)
-    val currentBalance = snapshot.getLong("balance") ?: 0L
+db.collection("cities").document("LA").delete()
+```
 
-    if (currentBalance < 100) {
-        throw Exception("Insufficient balance")
-    }
+### Transactions
 
-    transaction.update(userDoc, mapOf(
-        "balance" to currentBalance - 100
-    ))
+```kotlin
+db.runTransaction { transaction ->
+    val cityRef = db.collection("cities").document("LA")
+    val snapshot = transaction.get(cityRef)
+    val population = snapshot.get<Long>("population") ?: 0
 
-    currentBalance - 100 // Return value
-}) {
-    is FirebaseResult.Success -> println("New balance: ${result.data}")
-    is FirebaseResult.Failure -> println("Transaction failed")
+    transaction.update(cityRef, mapOf("population" to population + 1))
+    population + 1
 }
 ```
 
-### Transaction Operations
-
-```kotlin
-transaction.get(documentRef)                    // Read
-transaction.set(documentRef, data)              // Create/Replace
-transaction.set(documentRef, data, SetOptions.Merge) // Merge
-transaction.update(documentRef, data)           // Update
-transaction.delete(documentRef)                 // Delete
-```
-
-## Batch Writes
-
-Atomic write operations (no reads).
+### Batch Writes
 
 ```kotlin
 val batch = db.batch()
 
-// Set
-batch.set(
-    db.collection("users").document("user1"),
-    mapOf("name" to "User 1")
-)
+batch.set(db.collection("cities").document("NYC"), mapOf("name" to "New York"))
+batch.update(db.collection("cities").document("LA"), mapOf("capital" to false))
+batch.delete(db.collection("cities").document("OLD"))
 
-// Update
-batch.update(
-    db.collection("users").document("user2"),
-    mapOf("active" to true)
-)
-
-// Delete
-batch.delete(db.collection("users").document("user3"))
-
-// Commit all operations
-when (val result = batch.commit()) {
-    is FirebaseResult.Success -> println("Batch committed!")
-    is FirebaseResult.Failure -> println("Batch failed")
-}
+batch.commit()
 ```
 
-## DocumentSnapshot
+### Emulator
 
 ```kotlin
-val snapshot: DocumentSnapshot = ...
-
-// Properties
-snapshot.id              // Document ID
-snapshot.reference       // DocumentReference
-snapshot.exists          // Document exists
-snapshot.data            // Map<String, Any?>
-snapshot.metadata        // SnapshotMetadata
-
-// Typed getters
-snapshot.getString("name")
-snapshot.getLong("age")
-snapshot.getDouble("price")
-snapshot.getBoolean("active")
-snapshot.getTimestamp("createdAt")
-snapshot.getGeoPoint("location")
-snapshot.getDocumentReference("authorRef")
-
-// Generic getter
-snapshot.get("field")
+db.useEmulator("10.0.2.2", 8080)  // Android
+db.useEmulator("localhost", 8080) // iOS
 ```
 
-## QuerySnapshot
+## API Reference
 
-```kotlin
-val querySnapshot: QuerySnapshot = ...
+| Method | Description |
+|--------|-------------|
+| `collection(path)` | Get a collection reference |
+| `document(path)` | Get a document reference |
+| `collectionGroup(id)` | Query across subcollections |
+| `runTransaction()` | Execute atomic operations |
+| `batch()` | Create a batch writer |
 
-querySnapshot.documents      // List<DocumentSnapshot>
-querySnapshot.isEmpty        // Boolean
-querySnapshot.size           // Int
-querySnapshot.metadata       // SnapshotMetadata
-```
+## See Also
 
-## Settings
-
-```kotlin
-// Configure Firestore settings
-val settings = FirestoreSettings(
-    persistenceEnabled = true,
-    cacheSizeBytes = 100 * 1024 * 1024 // 100 MB
-)
-db.settings = settings
-
-// Read current settings
-val currentSettings = db.settings
-```
-
-## Emulator Support
-
-```kotlin
-// Connect to Firestore Emulator
-db.useEmulator("localhost", 8080)
-```
-
-## Error Handling
-
-```kotlin
-when (val result = userDoc.get()) {
-    is FirebaseResult.Success -> { /* success */ }
-    is FirebaseResult.Failure -> {
-        when (result.exception) {
-            is FirestoreException.NotFound -> "Document not found"
-            is FirestoreException.PermissionDenied -> "Permission denied"
-            is FirestoreException.AlreadyExists -> "Document already exists"
-            is FirestoreException.Unavailable -> "Service unavailable"
-            is FirestoreException.Cancelled -> "Operation cancelled"
-            is FirestoreException.InvalidArgument -> "Invalid argument"
-            is FirestoreException.DeadlineExceeded -> "Timeout"
-            is FirestoreException.ResourceExhausted -> "Quota exceeded"
-            is FirestoreException.FailedPrecondition -> "Precondition failed"
-            is FirestoreException.Aborted -> "Operation aborted"
-            is FirestoreException.OutOfRange -> "Value out of range"
-            is FirestoreException.Unimplemented -> "Not implemented"
-            is FirestoreException.Internal -> "Internal error"
-            is FirestoreException.DataLoss -> "Data loss"
-            is FirestoreException.Unauthenticated -> "Not authenticated"
-            else -> "Unknown error"
-        }
-    }
-}
-```
-
-## Data Types
-
-Supported Firestore data types:
-
-| Kotlin Type | Firestore Type |
-|-------------|----------------|
-| `String` | String |
-| `Long`, `Int` | Number (integer) |
-| `Double`, `Float` | Number (floating) |
-| `Boolean` | Boolean |
-| `Map<String, Any?>` | Map |
-| `List<Any?>` | Array |
-| `null` | Null |
-| `Timestamp` | Timestamp |
-| `GeoPoint` | GeoPoint |
-| `DocumentReference` | Reference |
-| `ByteArray` | Bytes |
+- [Firestore Documentation](https://firebase.google.com/docs/firestore)
