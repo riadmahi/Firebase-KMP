@@ -2,18 +2,19 @@
 
 package com.riadmahi.firebase.firestore
 
-import cocoapods.FirebaseFirestore.FIRFieldValue
-import cocoapods.FirebaseFirestore.FIRFirestore
-import cocoapods.FirebaseFirestore.FIRFirestoreSettings
-import cocoapods.FirebaseFirestore.FIRMemoryCacheSettings
-import cocoapods.FirebaseFirestore.FIRMemoryEagerGCSettings
-import cocoapods.FirebaseFirestore.FIRMemoryLRUGCSettings
-import cocoapods.FirebaseFirestore.FIRPersistentCacheSettings
-import cocoapods.FirebaseFirestore.FIRTimestamp
+import cocoapods.FirebaseFirestoreInternal.FIRFieldValue
+import cocoapods.FirebaseFirestoreInternal.FIRFirestore
+import cocoapods.FirebaseFirestoreInternal.FIRFirestoreSettings
+import cocoapods.FirebaseFirestoreInternal.FIRMemoryCacheSettings
+import cocoapods.FirebaseFirestoreInternal.FIRMemoryEagerGCSettings
+import cocoapods.FirebaseFirestoreInternal.FIRMemoryLRUGCSettings
+import cocoapods.FirebaseFirestoreInternal.FIRPersistentCacheSettings
 import com.riadmahi.firebase.core.FirebaseApp
 import com.riadmahi.firebase.core.FirebaseResult
 import com.riadmahi.firebase.core.util.awaitVoid
 import kotlinx.datetime.Instant
+import platform.Foundation.NSDate
+import platform.Foundation.timeIntervalSince1970
 
 /**
  * iOS implementation of FirebaseFirestore using Firebase iOS SDK.
@@ -37,25 +38,31 @@ actual class FirebaseFirestore private constructor(
         block: suspend Transaction.() -> T
     ): FirebaseResult<T> = safeFirestoreCall {
         var result: T? = null
-        ios.runTransactionWithBlock(
-            { firTransaction, errorPointer ->
-                try {
-                    val transaction = Transaction(firTransaction!!)
-                    result = kotlinx.coroutines.runBlocking { block(transaction) }
-                    null // Return null to indicate success
-                } catch (e: Exception) {
-                    errorPointer?.pointed?.value = platform.Foundation.NSError(
-                        domain = "FirestoreKMP",
-                        code = -1,
-                        userInfo = mapOf("message" to e.message)
-                    )
-                    null
+        var transactionError: Exception? = null
+
+        kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+            ios.runTransactionWithBlock(
+                { firTransaction, _ ->
+                    try {
+                        val transaction = Transaction(firTransaction!!)
+                        result = kotlinx.coroutines.runBlocking { block(transaction) }
+                        null // Return null to indicate success
+                    } catch (e: Exception) {
+                        transactionError = e
+                        null
+                    }
+                },
+                completion = { _, error ->
+                    if (error != null) {
+                        continuation.resumeWith(Result.failure(error.toException()))
+                    } else if (transactionError != null) {
+                        continuation.resumeWith(Result.failure(transactionError!!))
+                    } else {
+                        continuation.resumeWith(Result.success(Unit))
+                    }
                 }
-            },
-            completion = { _, error ->
-                if (error != null) throw error.toException()
-            }
-        )
+            )
+        }
         result!!
     }
 
@@ -103,8 +110,10 @@ actual class FirebaseFirestore private constructor(
             return FirebaseFirestore(firestore)
         }
 
+        @Suppress("UNCHECKED_CAST")
         actual fun getInstance(app: FirebaseApp): FirebaseFirestore {
-            val firestore = FIRFirestore.firestoreForApp(app.ios)
+            // Cast needed because cinterop generates different types for the same FIRApp
+            val firestore = FIRFirestore.firestoreForApp(app.ios as objcnames.classes.FIRApp)
             return FirebaseFirestore(firestore)
         }
     }
@@ -154,26 +163,11 @@ internal fun platform.Foundation.NSError.toException(): Exception {
  * Convert FIRFirestoreSettings to FirestoreSettings.
  */
 internal fun FIRFirestoreSettings.toCommon(): FirestoreSettings {
-    val cache = this.cacheSettings
-    val cacheSettings = when (cache) {
-        is FIRPersistentCacheSettings -> LocalCacheSettings.Persistent(
-            sizeBytes = cache.sizeBytes?.longValue ?: LocalCacheSettings.DEFAULT_CACHE_SIZE_BYTES
-        )
-        is FIRMemoryCacheSettings -> {
-            val gcSettings = when (val gc = cache.garbageCollectorSettings) {
-                is FIRMemoryLRUGCSettings -> MemoryGarbageCollectorSettings.Lru(
-                    sizeBytes = gc.sizeBytes?.longValue ?: LocalCacheSettings.DEFAULT_CACHE_SIZE_BYTES
-                )
-                else -> MemoryGarbageCollectorSettings.Eager
-            }
-            LocalCacheSettings.Memory(gcSettings)
-        }
-        else -> LocalCacheSettings.Persistent()
-    }
+    // Simplified - iOS SDK doesn't expose detailed cache settings through cinterop
     return FirestoreSettings(
         host = this.host,
         sslEnabled = this.sslEnabled,
-        cacheSettings = cacheSettings
+        cacheSettings = LocalCacheSettings.Persistent()
     )
 }
 
@@ -191,7 +185,7 @@ internal fun FirestoreSettings.toIos(): FIRFirestoreSettings {
 /**
  * Convert LocalCacheSettings to iOS cache settings.
  */
-private fun LocalCacheSettings.toIos(): cocoapods.FirebaseFirestore.FIRLocalCacheSettingsProtocol {
+private fun LocalCacheSettings.toIos(): cocoapods.FirebaseFirestoreInternal.FIRLocalCacheSettingsProtocol {
     return when (this) {
         is LocalCacheSettings.Persistent -> FIRPersistentCacheSettings(
             sizeBytes = platform.Foundation.NSNumber(long = sizeBytes)
@@ -205,7 +199,7 @@ private fun LocalCacheSettings.toIos(): cocoapods.FirebaseFirestore.FIRLocalCach
 /**
  * Convert MemoryGarbageCollectorSettings to iOS garbage collector settings.
  */
-private fun MemoryGarbageCollectorSettings.toIos(): cocoapods.FirebaseFirestore.FIRMemoryGarbageCollectorSettingsProtocol {
+private fun MemoryGarbageCollectorSettings.toIos(): cocoapods.FirebaseFirestoreInternal.FIRMemoryGarbageCollectorSettingsProtocol {
     return when (this) {
         is MemoryGarbageCollectorSettings.Eager -> FIRMemoryEagerGCSettings()
         is MemoryGarbageCollectorSettings.Lru -> FIRMemoryLRUGCSettings(
@@ -231,30 +225,63 @@ actual class FieldValue private constructor(
 }
 
 /**
- * iOS implementation of Timestamp using Firebase iOS SDK.
+ * iOS implementation of Timestamp.
+ * Note: FIRTimestamp is not exposed through cinterop, so we use a simple data class.
  */
-actual class Timestamp(
-    internal val ios: FIRTimestamp
-) {
-    actual val seconds: Long
-        get() = ios.seconds
-
+actual class Timestamp internal constructor(
+    actual val seconds: Long,
     actual val nanoseconds: Int
-        get() = ios.nanoseconds
-
-    constructor(seconds: Long, nanoseconds: Int) : this(
-        FIRTimestamp(seconds = seconds, nanoseconds = nanoseconds)
-    )
+) {
+    /**
+     * Internal representation for iOS interop - converts to NSDate for Firestore operations.
+     */
+    internal fun toNSDate(): NSDate {
+        val timeInterval = seconds.toDouble() + nanoseconds.toDouble() / 1_000_000_000.0
+        // NSDate uses timeIntervalSinceReferenceDate which is Jan 1, 2001
+        // timeIntervalSince1970 is Jan 1, 1970
+        // Difference is 978307200 seconds
+        return NSDate(timeIntervalSinceReferenceDate = timeInterval - 978307200.0)
+    }
 
     actual companion object {
-        actual fun now(): Timestamp = Timestamp(FIRTimestamp.timestamp())
+        actual fun now(): Timestamp {
+            val now = NSDate()
+            val totalSeconds = now.timeIntervalSince1970
+            val secs = totalSeconds.toLong()
+            val nanos = ((totalSeconds - secs) * 1_000_000_000).toInt()
+            return Timestamp(secs, nanos)
+        }
 
         actual fun fromDate(date: Instant): Timestamp {
             return Timestamp(date.epochSeconds, date.nanosecondsOfSecond)
+        }
+
+        /**
+         * Creates a Timestamp from an NSDate.
+         */
+        internal fun fromNSDate(date: NSDate): Timestamp {
+            val totalSeconds = date.timeIntervalSince1970
+            val secs = totalSeconds.toLong()
+            val nanos = ((totalSeconds - secs) * 1_000_000_000).toInt()
+            return Timestamp(secs, nanos)
         }
     }
 
     actual fun toDate(): Instant {
         return Instant.fromEpochSeconds(seconds, nanoseconds.toLong())
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Timestamp) return false
+        return seconds == other.seconds && nanoseconds == other.nanoseconds
+    }
+
+    override fun hashCode(): Int {
+        var result = seconds.hashCode()
+        result = 31 * result + nanoseconds
+        return result
+    }
+
+    override fun toString(): String = "Timestamp(seconds=$seconds, nanoseconds=$nanoseconds)"
 }
