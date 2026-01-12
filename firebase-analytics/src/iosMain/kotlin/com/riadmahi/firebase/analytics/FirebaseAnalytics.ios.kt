@@ -10,7 +10,7 @@ import platform.Foundation.NSNumber
  */
 actual class FirebaseAnalytics private constructor() {
     actual fun logEvent(name: String, params: Map<String, Any>?) {
-        val iosParams = params?.mapValues { (_, value) ->
+        val iosParams: Map<Any?, *>? = params?.mapValues { (_, value) ->
             when (value) {
                 is Int -> NSNumber(int = value)
                 is Long -> NSNumber(longLong = value)
@@ -48,7 +48,7 @@ actual class FirebaseAnalytics private constructor() {
     }
 
     actual fun setDefaultEventParameters(params: Map<String, Any>?) {
-        val iosParams = params?.mapValues { (_, value) ->
+        val iosParams: Map<Any?, *>? = params?.mapValues { (_, value) ->
             when (value) {
                 is Int -> NSNumber(int = value)
                 is Long -> NSNumber(longLong = value)
@@ -62,9 +62,8 @@ actual class FirebaseAnalytics private constructor() {
     }
 
     actual fun getAppInstanceId(callback: (String?) -> Unit) {
-        FIRAnalytics.appInstanceID { instanceId ->
-            callback(instanceId)
-        }
+        val instanceId = FIRAnalytics.appInstanceID()
+        callback(instanceId)
     }
 
     actual fun setSessionTimeoutDuration(milliseconds: Long) {

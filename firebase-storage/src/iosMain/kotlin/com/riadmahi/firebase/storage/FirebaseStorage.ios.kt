@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.riadmahi.firebase.storage
 
 import cocoapods.FirebaseStorage.FIRStorage
@@ -10,16 +12,16 @@ actual class FirebaseStorage private constructor(
         get() = FirebaseApp.getInstance()
 
     actual var maxUploadRetryTimeMillis: Long
-        get() = (ios.maxUploadRetryTime * 1000).toLong()
-        set(value) { ios.maxUploadRetryTime = value / 1000.0 }
+        get() = (ios.maxUploadRetryTime() * 1000).toLong()
+        set(value) { ios.setMaxUploadRetryTime(value / 1000.0) }
 
     actual var maxDownloadRetryTimeMillis: Long
-        get() = (ios.maxDownloadRetryTime * 1000).toLong()
-        set(value) { ios.maxDownloadRetryTime = value / 1000.0 }
+        get() = (ios.maxDownloadRetryTime() * 1000).toLong()
+        set(value) { ios.setMaxDownloadRetryTime(value / 1000.0) }
 
     actual var maxOperationRetryTimeMillis: Long
-        get() = (ios.maxOperationRetryTime * 1000).toLong()
-        set(value) { ios.maxOperationRetryTime = value / 1000.0 }
+        get() = (ios.maxOperationRetryTime() * 1000).toLong()
+        set(value) { ios.setMaxOperationRetryTime(value / 1000.0) }
 
     actual val reference: StorageReference
         get() = StorageReference(ios.reference())

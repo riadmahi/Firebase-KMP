@@ -54,7 +54,7 @@ actual class FirebaseCrashlytics private constructor(
     }
 
     actual fun setCustomKeys(keysAndValues: Map<String, Any>) {
-        val iosValues = keysAndValues.mapValues { (_, value) ->
+        val iosValues: Map<Any?, *> = keysAndValues.mapValues { (_, value) ->
             when (value) {
                 is Int -> NSNumber(int = value)
                 is Long -> NSNumber(longLong = value)

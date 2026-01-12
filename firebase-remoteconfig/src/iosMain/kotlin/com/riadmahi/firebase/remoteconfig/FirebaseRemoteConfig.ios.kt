@@ -3,11 +3,10 @@
 package com.riadmahi.firebase.remoteconfig
 
 import cocoapods.FirebaseRemoteConfig.FIRRemoteConfig
+import cocoapods.FirebaseRemoteConfig.FIRRemoteConfigFetchAndActivateStatus
 import cocoapods.FirebaseRemoteConfig.FIRRemoteConfigSettings
 import cocoapods.FirebaseRemoteConfig.FIRRemoteConfigValue
-import cocoapods.FirebaseRemoteConfig.FIRRemoteConfigSourceDefault
-import cocoapods.FirebaseRemoteConfig.FIRRemoteConfigSourceRemote
-import cocoapods.FirebaseRemoteConfig.FIRRemoteConfigSourceStatic
+import cocoapods.FirebaseRemoteConfig.FIRRemoteConfigSource
 import com.riadmahi.firebase.core.FirebaseResult
 import platform.Foundation.NSNumber
 import kotlin.coroutines.resume
@@ -54,14 +53,15 @@ actual class FirebaseRemoteConfig private constructor(
             if (error != null) {
                 continuation.resume(FirebaseResult.Failure(error.toRemoteConfigException()))
             } else {
-                // Status indicates whether config was fetched from remote
-                continuation.resume(FirebaseResult.Success(status.toInt() == 1))
+                // Check if config was fetched from remote
+                val fetchedFromRemote = status == FIRRemoteConfigFetchAndActivateStatus.FIRRemoteConfigFetchAndActivateStatusSuccessFetchedFromRemote
+                continuation.resume(FirebaseResult.Success(fetchedFromRemote))
             }
         }
     }
 
     actual fun setDefaults(defaults: Map<String, Any>) {
-        val iosDefaults = defaults.mapValues { (_, value) ->
+        val iosDefaults: Map<Any?, *> = defaults.mapValues { (_, value) ->
             when (value) {
                 is Int -> NSNumber(int = value)
                 is Long -> NSNumber(longLong = value)
@@ -88,7 +88,7 @@ actual class FirebaseRemoteConfig private constructor(
 
     @Suppress("UNCHECKED_CAST")
     actual fun getAll(): Map<String, RemoteConfigValue> {
-        val keys = ios.allKeysFromSource(FIRRemoteConfigSourceRemote) as? List<String> ?: emptyList()
+        val keys = ios.allKeysFromSource(FIRRemoteConfigSource.FIRRemoteConfigSourceRemote) as? List<String> ?: emptyList()
         return keys.associateWith { key ->
             ios.configValueForKey(key).toCommon()
         }
@@ -107,7 +107,8 @@ actual class FirebaseRemoteConfig private constructor(
 
     actual suspend fun reset(): FirebaseResult<Unit> {
         // iOS doesn't have a direct reset method, but we can clear defaults
-        ios.setDefaults(emptyMap<String, Any>())
+        val emptyDefaults: Map<Any?, *> = emptyMap<Any?, Any?>()
+        ios.setDefaults(emptyDefaults)
         return FirebaseResult.Success(Unit)
     }
 
@@ -134,11 +135,11 @@ private fun platform.Foundation.NSError.toRemoteConfigException(): RemoteConfigE
 /**
  * Convert iOS source to common ValueSource.
  */
-private fun Long.toCommon(): ValueSource {
+private fun FIRRemoteConfigSource.toCommon(): ValueSource {
     return when (this) {
-        FIRRemoteConfigSourceDefault -> ValueSource.DEFAULT
-        FIRRemoteConfigSourceRemote -> ValueSource.REMOTE
-        FIRRemoteConfigSourceStatic -> ValueSource.STATIC
+        FIRRemoteConfigSource.FIRRemoteConfigSourceDefault -> ValueSource.DEFAULT
+        FIRRemoteConfigSource.FIRRemoteConfigSourceRemote -> ValueSource.REMOTE
+        FIRRemoteConfigSource.FIRRemoteConfigSourceStatic -> ValueSource.STATIC
         else -> ValueSource.STATIC
     }
 }
