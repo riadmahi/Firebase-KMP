@@ -55,6 +55,11 @@ kotlin {
             implementation(project(":firebase-core"))
             implementation(project(":firebase-auth"))
             implementation(project(":firebase-firestore"))
+            implementation(project(":firebase-storage"))
+            implementation(project(":firebase-messaging"))
+            implementation(project(":firebase-analytics"))
+            implementation(project(":firebase-remoteconfig"))
+            implementation(project(":firebase-crashlytics"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
