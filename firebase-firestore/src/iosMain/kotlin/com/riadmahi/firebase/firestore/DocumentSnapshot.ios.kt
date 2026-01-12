@@ -2,11 +2,13 @@
 
 package com.riadmahi.firebase.firestore
 
-import cocoapods.FirebaseFirestore.FIRDocumentChange
-import cocoapods.FirebaseFirestore.FIRDocumentChangeType
-import cocoapods.FirebaseFirestore.FIRDocumentSnapshot
-import cocoapods.FirebaseFirestore.FIRQueryDocumentSnapshot
-import cocoapods.FirebaseFirestore.FIRQuerySnapshot
+import cocoapods.FirebaseFirestoreInternal.FIRDocumentChange
+import cocoapods.FirebaseFirestoreInternal.FIRDocumentChangeType
+import cocoapods.FirebaseFirestoreInternal.FIRDocumentSnapshot
+import cocoapods.FirebaseFirestoreInternal.FIRGeoPoint
+import cocoapods.FirebaseFirestoreInternal.FIRQueryDocumentSnapshot
+import cocoapods.FirebaseFirestoreInternal.FIRQuerySnapshot
+import platform.Foundation.NSDate
 
 /**
  * iOS implementation of DocumentSnapshot using Firebase iOS SDK.
@@ -25,8 +27,8 @@ actual class DocumentSnapshot internal constructor(
 
     actual val metadata: SnapshotMetadata
         get() = SnapshotMetadata(
-            hasPendingWrites = ios.metadata.hasPendingWrites,
-            isFromCache = ios.metadata.isFromCache
+            hasPendingWrites = ios.metadata.hasPendingWrites(),
+            isFromCache = ios.metadata.isFromCache()
         )
 
     actual fun data(): Map<String, Any?>? {
@@ -71,15 +73,15 @@ actual class QuerySnapshot internal constructor(
         }
 
     actual val isEmpty: Boolean
-        get() = ios.isEmpty
+        get() = ios.isEmpty()
 
     actual val size: Int
         get() = ios.count.toInt()
 
     actual val metadata: SnapshotMetadata
         get() = SnapshotMetadata(
-            hasPendingWrites = ios.metadata.hasPendingWrites,
-            isFromCache = ios.metadata.isFromCache
+            hasPendingWrites = ios.metadata.hasPendingWrites(),
+            isFromCache = ios.metadata.isFromCache()
         )
 
     actual val documentChanges: List<DocumentChange>
@@ -115,9 +117,9 @@ private fun convertFromFirestore(data: Map<String, Any?>): Map<String, Any?> {
 @Suppress("UNCHECKED_CAST")
 private fun convertValueFromFirestore(value: Any?): Any? {
     return when (value) {
-        is cocoapods.FirebaseFirestore.FIRTimestamp -> Timestamp(value)
-        is cocoapods.FirebaseFirestore.FIRDocumentReference -> DocumentReference(value)
-        is cocoapods.FirebaseFirestore.FIRGeoPoint -> GeoPoint(value.latitude, value.longitude)
+        is NSDate -> Timestamp.fromNSDate(value)
+        is cocoapods.FirebaseFirestoreInternal.FIRDocumentReference -> DocumentReference(value)
+        is FIRGeoPoint -> GeoPoint(value.latitude, value.longitude)
         is Map<*, *> -> convertFromFirestore(value as Map<String, Any?>)
         is List<*> -> value.map { convertValueFromFirestore(it) }
         else -> value
