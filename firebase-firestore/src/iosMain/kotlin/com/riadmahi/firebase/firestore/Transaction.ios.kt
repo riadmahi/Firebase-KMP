@@ -2,8 +2,8 @@
 
 package com.riadmahi.firebase.firestore
 
-import cocoapods.FirebaseFirestore.FIRTransaction
-import cocoapods.FirebaseFirestore.FIRWriteBatch
+import cocoapods.FirebaseFirestoreInternal.FIRTransaction
+import cocoapods.FirebaseFirestoreInternal.FIRWriteBatch
 import com.riadmahi.firebase.core.FirebaseResult
 import com.riadmahi.firebase.core.util.awaitVoid
 import kotlinx.cinterop.ObjCObjectVar
