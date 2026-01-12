@@ -7,8 +7,11 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
-// Disable Xcode project configuration check (not needed for library projects)
-tasks.matching { it.name == "checkXcodeProjectConfiguration" }.configureEach {
+// Disable Xcode-related tasks (not needed for library projects)
+tasks.matching {
+    it.name == "checkXcodeProjectConfiguration" ||
+    it.name == "convertPbxprojToJson"
+}.configureEach {
     enabled = false
 }
 
@@ -23,15 +26,16 @@ kotlin {
         }
     }
 
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "Shared"
-            isStatic = true
-        }
-    }
+    // iOS disabled for now - focus on Android first
+    // listOf(
+    //     iosArm64(),
+    //     iosSimulatorArm64()
+    // ).forEach { iosTarget ->
+    //     iosTarget.binaries.framework {
+    //         baseName = "Shared"
+    //         isStatic = true
+    //     }
+    // }
 
     sourceSets {
         androidMain.dependencies {
@@ -41,6 +45,7 @@ kotlin {
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
+            implementation(compose.materialIconsExtended)
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)

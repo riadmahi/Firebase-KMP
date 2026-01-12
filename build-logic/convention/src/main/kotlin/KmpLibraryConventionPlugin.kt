@@ -20,9 +20,10 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
                     freeCompilerArgs.add("-Xexpect-actual-classes")
                 }
 
-                // Configure iOS targets
-                iosArm64()
-                iosSimulatorArm64()
+                // iOS targets disabled for now - focus on Android first
+                // To enable iOS, uncomment these and the cocoapods plugin above
+                // iosArm64()
+                // iosSimulatorArm64()
 
                 sourceSets.apply {
                     commonMain.dependencies {
@@ -31,8 +32,11 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
                 }
             }
 
-            // Disable Xcode project configuration check (not needed for library projects)
-            tasks.matching { it.name == "checkXcodeProjectConfiguration" }.configureEach {
+            // Disable Xcode-related tasks (not needed for library projects without an Xcode project)
+            tasks.matching {
+                it.name == "checkXcodeProjectConfiguration" ||
+                it.name == "convertPbxprojToJson"
+            }.configureEach {
                 enabled = false
             }
         }
