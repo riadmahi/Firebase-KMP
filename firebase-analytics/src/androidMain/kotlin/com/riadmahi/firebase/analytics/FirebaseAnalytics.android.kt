@@ -2,8 +2,7 @@ package com.riadmahi.firebase.analytics
 
 import android.os.Bundle
 import com.google.firebase.analytics.FirebaseAnalytics as AndroidFirebaseAnalytics
-import com.google.firebase.analytics.ktx.analytics
-import com.google.firebase.ktx.Firebase
+import com.riadmahi.firebase.core.FirebaseContext
 
 /**
  * Android implementation of FirebaseAnalytics using Firebase Android SDK.
@@ -54,8 +53,13 @@ actual class FirebaseAnalytics private constructor(
     }
 
     actual companion object {
-        actual fun getInstance(): FirebaseAnalytics =
-            FirebaseAnalytics(Firebase.analytics)
+        actual fun getInstance(): FirebaseAnalytics {
+            val context = FirebaseContext.applicationContext
+                ?: throw IllegalStateException(
+                    "FirebaseContext not initialized. Call FirebaseApp.initialize(context) first."
+                )
+            return FirebaseAnalytics(AndroidFirebaseAnalytics.getInstance(context))
+        }
     }
 }
 
