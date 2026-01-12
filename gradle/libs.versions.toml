@@ -65,6 +65,11 @@ firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "fir
 firebase-common-android = { module = "com.google.firebase:firebase-common" }
 firebase-auth-android = { module = "com.google.firebase:firebase-auth" }
 firebase-firestore-android = { module = "com.google.firebase:firebase-firestore" }
+firebase-storage-android = { module = "com.google.firebase:firebase-storage" }
+firebase-messaging-android = { module = "com.google.firebase:firebase-messaging" }
+firebase-analytics-android = { module = "com.google.firebase:firebase-analytics" }
+firebase-config-android = { module = "com.google.firebase:firebase-config" }
+firebase-crashlytics-android = { module = "com.google.firebase:firebase-crashlytics" }
 
 # CLI
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
