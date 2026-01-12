@@ -37,6 +37,11 @@ include(":demo:androidApp")
 include(":firebase-core")
 include(":firebase-auth")
 include(":firebase-firestore")
+include(":firebase-storage")
+include(":firebase-messaging")
+include(":firebase-analytics")
+include(":firebase-remoteconfig")
+include(":firebase-crashlytics")
 
 // CLI tool
 include(":firebase-cli")
