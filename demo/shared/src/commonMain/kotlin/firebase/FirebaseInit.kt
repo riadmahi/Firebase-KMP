@@ -3,6 +3,7 @@ package firebase
 import com.riadmahi.firebase.core.FirebaseApp
 import com.riadmahi.firebase.auth.FirebaseAuth
 import com.riadmahi.firebase.firestore.FirebaseFirestore
+import com.riadmahi.firebase.storage.FirebaseStorage
 
 /**
  * Firebase initialization for your KMP project.
@@ -46,6 +47,15 @@ object FirebaseInit {
         get() {
             check(initialized) { "Call initialize() first" }
             return FirebaseFirestore.getInstance()
+        }
+
+    /**
+     * Get the Firebase Storage instance.
+     */
+    val storage: FirebaseStorage
+        get() {
+            check(initialized) { "Call initialize() first" }
+            return FirebaseStorage.getInstance()
         }
 
 }
