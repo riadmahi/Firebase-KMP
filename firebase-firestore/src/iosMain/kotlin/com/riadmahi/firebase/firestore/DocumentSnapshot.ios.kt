@@ -123,11 +123,3 @@ private fun convertValueFromFirestore(value: Any?): Any? {
         else -> value
     }
 }
-
-/**
- * GeoPoint representation for Firestore.
- */
-data class GeoPoint(
-    val latitude: Double,
-    val longitude: Double
-)
