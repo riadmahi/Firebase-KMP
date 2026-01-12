@@ -93,7 +93,7 @@ fun AnalyticsDemoScreen(onBack: () -> Unit) {
                 onClick = {
                     analytics.logEvent("demo_button_clicked") {
                         param("button_name", "custom_event")
-                        param("timestamp", System.currentTimeMillis())
+                        param("timestamp", currentTimeMillis())
                     }
                     eventCount++
                     statusMessage = "Logged: demo_button_clicked"
@@ -107,7 +107,7 @@ fun AnalyticsDemoScreen(onBack: () -> Unit) {
             Button(
                 onClick = {
                     analytics.logEvent(AnalyticsEvent.PURCHASE) {
-                        param(AnalyticsParam.TRANSACTION_ID, "TXN_${System.currentTimeMillis()}")
+                        param(AnalyticsParam.TRANSACTION_ID, "TXN_${currentTimeMillis()}")
                         param(AnalyticsParam.VALUE, 29.99)
                         param(AnalyticsParam.CURRENCY, "USD")
                         param(AnalyticsParam.ITEM_NAME, "Premium Subscription")
@@ -152,7 +152,7 @@ fun AnalyticsDemoScreen(onBack: () -> Unit) {
             // Set User ID
             Button(
                 onClick = {
-                    analytics.setUserId("demo_user_${System.currentTimeMillis() % 1000}")
+                    analytics.setUserId("demo_user_${currentTimeMillis() % 1000}")
                     statusMessage = "Set user ID"
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -179,4 +179,4 @@ fun AnalyticsDemoScreen(onBack: () -> Unit) {
 }
 
 // Helper to get current time
-private fun System.currentTimeMillis(): Long = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+private fun currentTimeMillis(): Long = TimeUtils.currentTimeMillis()

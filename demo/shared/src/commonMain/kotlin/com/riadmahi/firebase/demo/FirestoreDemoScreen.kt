@@ -11,7 +11,6 @@ import androidx.compose.ui.unit.dp
 import com.riadmahi.firebase.core.FirebaseResult
 import com.riadmahi.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 
 data class TodoItem(
     val id: String,
@@ -106,7 +105,7 @@ fun FirestoreDemoScreen(onBack: () -> Unit) {
                                 val data = mapOf(
                                     "title" to newTodoTitle,
                                     "completed" to false,
-                                    "createdAt" to Clock.System.now().toEpochMilliseconds()
+                                    "createdAt" to TimeUtils.currentTimeMillis()
                                 )
                                 when (val result = todosCollection.add(data)) {
                                     is FirebaseResult.Success -> {

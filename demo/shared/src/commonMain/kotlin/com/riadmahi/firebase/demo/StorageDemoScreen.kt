@@ -13,7 +13,6 @@ import com.riadmahi.firebase.storage.FirebaseStorage
 import com.riadmahi.firebase.storage.StorageReference
 import com.riadmahi.firebase.storage.storageMetadata
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 
 data class StorageFileItem(
     val name: String,
@@ -133,7 +132,7 @@ fun StorageDemoScreen(onBack: () -> Unit) {
                                 isLoading = true
                                 message = null
 
-                                val fileName = "file_${Clock.System.now().toEpochMilliseconds()}.txt"
+                                val fileName = "file_${TimeUtils.currentTimeMillis()}.txt"
                                 val ref = storage.getReference("$currentPath/$fileName")
                                 val bytes = uploadText.encodeToByteArray()
 

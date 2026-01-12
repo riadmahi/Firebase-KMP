@@ -235,5 +235,5 @@ fun CrashlyticsDemoScreen(onBack: () -> Unit) {
 }
 
 private fun currentTime(): String {
-    return kotlinx.datetime.Clock.System.now().toString()
+    return TimeUtils.currentTimeString()
 }
