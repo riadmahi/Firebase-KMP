@@ -1,7 +1,8 @@
-rootProject.name = "Firebase"
+rootProject.name = "kfire"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google {
             mavenContent {
@@ -28,4 +29,14 @@ dependencyResolutionManagement {
     }
 }
 
-include(":composeApp")
+// Demo app
+include(":demo:shared")
+include(":demo:androidApp")
+
+// Firebase SDK modules
+include(":firebase-core")
+include(":firebase-auth")
+include(":firebase-firestore")
+
+// CLI tool
+include(":firebase-cli")
