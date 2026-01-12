@@ -16,7 +16,7 @@ kotlin {
         ios.deploymentTarget = "15.0"
         version = "1.0.0"
 
-        pod("FirebaseFirestore") {
+        pod("FirebaseFirestoreInternal") {
             version = libs.versions.firebaseIos.get()
         }
 
