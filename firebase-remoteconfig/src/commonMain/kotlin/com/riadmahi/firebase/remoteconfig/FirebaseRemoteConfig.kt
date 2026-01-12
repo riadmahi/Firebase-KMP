@@ -188,7 +188,7 @@ enum class ValueSource {
 sealed class RemoteConfigException(
     message: String,
     cause: Throwable? = null
-) : Exception(message, cause) {
+) : com.riadmahi.firebase.core.FirebaseException(message, cause) {
 
     /**
      * Fetch failed due to throttling.

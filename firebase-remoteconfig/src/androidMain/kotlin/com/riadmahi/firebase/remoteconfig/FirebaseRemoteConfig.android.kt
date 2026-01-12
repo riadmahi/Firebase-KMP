@@ -1,10 +1,8 @@
 package com.riadmahi.firebase.remoteconfig
 
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig as AndroidFirebaseRemoteConfig
+import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings
 import com.google.firebase.remoteconfig.FirebaseRemoteConfigValue as AndroidRemoteConfigValue
-import com.google.firebase.remoteconfig.ktx.remoteConfig
-import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
-import com.google.firebase.ktx.Firebase
 import com.riadmahi.firebase.core.FirebaseResult
 import kotlinx.coroutines.tasks.await
 
@@ -53,9 +51,9 @@ actual class FirebaseRemoteConfig private constructor(
         android.getValue(key).source.toCommon()
 
     actual fun setMinimumFetchInterval(intervalInSeconds: Long) {
-        val settings = remoteConfigSettings {
-            minimumFetchIntervalInSeconds = intervalInSeconds
-        }
+        val settings = FirebaseRemoteConfigSettings.Builder()
+            .setMinimumFetchIntervalInSeconds(intervalInSeconds)
+            .build()
         android.setConfigSettingsAsync(settings)
     }
 
@@ -65,7 +63,7 @@ actual class FirebaseRemoteConfig private constructor(
 
     actual companion object {
         actual fun getInstance(): FirebaseRemoteConfig =
-            FirebaseRemoteConfig(Firebase.remoteConfig)
+            FirebaseRemoteConfig(AndroidFirebaseRemoteConfig.getInstance())
     }
 }
 
