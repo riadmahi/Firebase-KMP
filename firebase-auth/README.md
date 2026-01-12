@@ -1,282 +1,131 @@
-# firebase-auth
+# Firebase Auth
 
-Firebase Authentication module for Kotlin Multiplatform.
+Authentication for KFire with support for multiple providers.
 
 ## Installation
 
 ```kotlin
 // build.gradle.kts
-kotlin {
-    sourceSets {
-        commonMain.dependencies {
-            implementation("com.riadmahi.firebase:firebase-core:1.0.0")
-            implementation("com.riadmahi.firebase:firebase-auth:1.0.0")
-        }
-    }
+commonMain.dependencies {
+    implementation("com.riadmahi.firebase:firebase-core:1.0.0")
+    implementation("com.riadmahi.firebase:firebase-auth:1.0.0")
 }
 ```
 
-## Main Classes
+## Usage
 
-### FirebaseAuth
-
-Main authentication service.
+### Get Auth Instance
 
 ```kotlin
 import com.riadmahi.firebase.auth.FirebaseAuth
-import com.riadmahi.firebase.core.FirebaseResult
 
 val auth = FirebaseAuth.getInstance()
-
-// Current user
-val user = auth.currentUser
 ```
 
-### Authentication Methods
-
-#### Email/Password
+### Sign Up with Email
 
 ```kotlin
-// Sign up
-when (val result = auth.createUserWithEmailAndPassword("email@example.com", "password123")) {
-    is FirebaseResult.Success -> {
-        val user = result.data.user
-        println("Signed up: ${user.uid}")
-    }
-    is FirebaseResult.Failure -> {
-        println("Error: ${result.exception.message}")
-    }
+val result = auth.createUserWithEmailAndPassword("ada@example.com", "password123")
+when (result) {
+    is FirebaseResult.Success -> println("User created: ${result.data.user?.uid}")
+    is FirebaseResult.Failure -> println("Error: ${result.exception.message}")
 }
+```
 
-// Sign in
-when (val result = auth.signInWithEmailAndPassword("email@example.com", "password123")) {
+### Sign In with Email
+
+```kotlin
+val result = auth.signInWithEmailAndPassword("ada@example.com", "password123")
+when (result) {
     is FirebaseResult.Success -> println("Signed in!")
     is FirebaseResult.Failure -> println("Error: ${result.exception.message}")
 }
-
-// Password reset
-auth.sendPasswordResetEmail("email@example.com")
-
-// Confirm password reset
-auth.confirmPasswordReset(code = "oobCode", newPassword = "newPassword123")
 ```
 
-#### OAuth Providers
+### Sign In Anonymously
 
 ```kotlin
-import com.riadmahi.firebase.auth.AuthCredential
-
-// Google Sign-In
-val googleCredential = AuthCredential.Google(
-    idToken = "google-id-token",
-    accessToken = "google-access-token" // optional
-)
-auth.signInWithCredential(googleCredential)
-
-// Apple Sign-In
-val appleCredential = AuthCredential.Apple(idToken = "apple-id-token")
-auth.signInWithCredential(appleCredential)
-
-// Generic OAuth
-val oauthCredential = AuthCredential.OAuth(
-    providerId = "github.com",
-    idToken = "oauth-id-token",
-    accessToken = "oauth-access-token"
-)
-auth.signInWithCredential(oauthCredential)
-```
-
-#### Phone Authentication
-
-```kotlin
-val phoneCredential = AuthCredential.Phone(
-    verificationId = "verification-id",
-    smsCode = "123456"
-)
-auth.signInWithCredential(phoneCredential)
-```
-
-#### Anonymous Authentication
-
-```kotlin
-when (val result = auth.signInAnonymously()) {
-    is FirebaseResult.Success -> {
-        val user = result.data.user
-        println("Anonymous user: ${user.uid}")
-    }
-    is FirebaseResult.Failure -> println("Error")
+val result = auth.signInAnonymously()
+when (result) {
+    is FirebaseResult.Success -> println("Anonymous user: ${result.data.user?.uid}")
+    is FirebaseResult.Failure -> println("Error: ${result.exception.message}")
 }
 ```
 
-#### Custom Token
+### Social Authentication
 
 ```kotlin
-auth.signInWithCustomToken("custom-jwt-token")
+// Google Sign-In
+val credential = AuthCredential.Google(idToken = "google-id-token")
+auth.signInWithCredential(credential)
+
+// Apple Sign-In
+val credential = AuthCredential.Apple(
+    idToken = "apple-id-token",
+    nonce = "random-nonce"
+)
+auth.signInWithCredential(credential)
 ```
 
-### Sign Out
+### Listen to Auth State
 
 ```kotlin
+auth.authStateFlow.collect { user ->
+    if (user != null) {
+        println("Signed in as: ${user.email}")
+    } else {
+        println("Not signed in")
+    }
+}
+```
+
+### User Management
+
+```kotlin
+val user = auth.currentUser ?: return
+
+// User properties
+user.uid
+user.email
+user.displayName
+user.isAnonymous
+
+// Update profile
+user.updateProfile(displayName = "Ada Lovelace")
+
+// Send email verification
+user.sendEmailVerification()
+
+// Sign out
 auth.signOut()
 ```
 
-### Auth State Observer
+### Password Reset
 
 ```kotlin
-// Observe authentication state changes
-auth.authStateFlow.collect { user ->
-    if (user != null) {
-        println("Signed in: ${user.email}")
-    } else {
-        println("Signed out")
-    }
-}
+auth.sendPasswordResetEmail("ada@example.com")
 ```
 
-## FirebaseUser
-
-### Properties
+### Emulator
 
 ```kotlin
-val user = auth.currentUser
-
-user?.uid              // Unique user ID
-user?.email            // Email address
-user?.displayName      // Display name
-user?.photoUrl         // Profile photo URL
-user?.phoneNumber      // Phone number
-user?.isEmailVerified  // Email verification status
-user?.isAnonymous      // Anonymous account flag
-user?.providerId       // Primary provider ID
-user?.providerData     // List of linked providers
+auth.useEmulator("10.0.2.2", 9099)  // Android
+auth.useEmulator("localhost", 9099) // iOS
 ```
 
-### Profile Management
+## API Reference
 
-```kotlin
-// Update profile
-user?.updateProfile(
-    displayName = "John Doe",
-    photoUrl = "https://example.com/photo.jpg"
-)
+| Method | Description |
+|--------|-------------|
+| `signInWithEmailAndPassword()` | Sign in with email/password |
+| `createUserWithEmailAndPassword()` | Create a new user |
+| `signInWithCredential()` | Sign in with OAuth credential |
+| `signInAnonymously()` | Sign in anonymously |
+| `signInWithCustomToken()` | Sign in with custom token |
+| `signOut()` | Sign out current user |
+| `sendPasswordResetEmail()` | Send password reset email |
+| `authStateFlow` | Observe auth state changes |
 
-// Update email (sends verification)
-user?.updateEmail("new@example.com")
+## See Also
 
-// Update password
-user?.updatePassword("newPassword123")
-
-// Send email verification
-user?.sendEmailVerification()
-
-// Reload user data
-user?.reload()
-
-// Delete account
-user?.delete()
-```
-
-### ID Token
-
-```kotlin
-when (val result = user?.getIdToken(forceRefresh = false)) {
-    is FirebaseResult.Success -> {
-        val token = result.data
-        // Use token for backend authentication
-    }
-    is FirebaseResult.Failure -> println("Error")
-}
-```
-
-### Account Linking
-
-```kotlin
-// Link additional provider
-val credential = AuthCredential.Google(idToken = "...")
-user?.linkWithCredential(credential)
-
-// Unlink provider
-user?.unlink("google.com")
-
-// Re-authenticate before sensitive operations
-user?.reauthenticate(credential)
-```
-
-## AuthCredential Types
-
-```kotlin
-sealed class AuthCredential {
-    data class EmailPassword(val email: String, val password: String)
-    data class Google(val idToken: String, val accessToken: String? = null)
-    data class Apple(val idToken: String)
-    data class Phone(val verificationId: String, val smsCode: String)
-    data class Custom(val token: String)
-    data class OAuth(val providerId: String, val idToken: String?, val accessToken: String?)
-}
-```
-
-## AuthResult
-
-```kotlin
-data class AuthResult(
-    val user: FirebaseUser,
-    val additionalUserInfo: AdditionalUserInfo?
-)
-
-data class AdditionalUserInfo(
-    val isNewUser: Boolean,
-    val providerId: String?,
-    val username: String?,
-    val profile: Map<String, Any?>?
-)
-```
-
-## Error Handling
-
-```kotlin
-when (val result = auth.signInWithEmailAndPassword(email, password)) {
-    is FirebaseResult.Success -> { /* success */ }
-    is FirebaseResult.Failure -> {
-        when (result.exception) {
-            is AuthException.InvalidCredential -> "Invalid credentials"
-            is AuthException.UserNotFound -> "User not found"
-            is AuthException.WrongPassword -> "Wrong password"
-            is AuthException.EmailAlreadyInUse -> "Email already in use"
-            is AuthException.WeakPassword -> "Password too weak"
-            is AuthException.InvalidEmail -> "Invalid email format"
-            is AuthException.TooManyRequests -> "Too many attempts, try later"
-            is AuthException.UserDisabled -> "Account disabled"
-            is AuthException.RequiresRecentLogin -> "Please re-authenticate"
-            is AuthException.CredentialAlreadyInUse -> "Credential already linked"
-            is AuthException.OperationNotAllowed -> "Operation not allowed"
-            is AuthException.NetworkError -> "Network error"
-            else -> "Unknown error"
-        }
-    }
-}
-```
-
-## Emulator Support
-
-```kotlin
-// Connect to Firebase Auth Emulator
-auth.useEmulator("localhost", 9099)
-```
-
-## UserInfo
-
-Information about linked providers.
-
-```kotlin
-data class UserInfo(
-    val uid: String,
-    val providerId: String,
-    val email: String?,
-    val displayName: String?,
-    val photoUrl: String?,
-    val phoneNumber: String?
-)
-
-// Get linked providers
-val providers: List<UserInfo> = user?.providerData ?: emptyList()
-```
+- [Firebase Auth Documentation](https://firebase.google.com/docs/auth)
