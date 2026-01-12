@@ -1,17 +1,21 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, kotlinx.cinterop.BetaInteropApi::class)
+
 package com.riadmahi.firebase.storage
 
 import cocoapods.FirebaseStorage.FIRStorageReference
 import cocoapods.FirebaseStorage.FIRStorageMetadata
 import cocoapods.FirebaseStorage.FIRStorageListResult
 import com.riadmahi.firebase.core.FirebaseResult
-import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.*
 import platform.Foundation.NSData
+import platform.Foundation.NSDate
 import platform.Foundation.NSError
 import platform.Foundation.create
+import platform.Foundation.timeIntervalSince1970
+import platform.posix.memcpy
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-@OptIn(ExperimentalForeignApi::class)
 actual class StorageReference internal constructor(
     internal val ios: FIRStorageReference
 ) {
@@ -19,13 +23,13 @@ actual class StorageReference internal constructor(
         get() = FirebaseStorage.getInstance()
 
     actual val name: String
-        get() = ios.name
+        get() = ios.name()
 
     actual val path: String
-        get() = ios.fullPath
+        get() = ios.fullPath()
 
     actual val bucket: String
-        get() = ios.bucket
+        get() = ios.bucket()
 
     actual val parent: StorageReference?
         get() = ios.parent()?.let { StorageReference(it) }
@@ -47,8 +51,8 @@ actual class StorageReference internal constructor(
                 } else {
                     continuation.resume(FirebaseResult.Success(
                         UploadResult(
-                            bytesTransferred = resultMetadata?.size ?: 0,
-                            totalBytes = resultMetadata?.size ?: 0,
+                            bytesTransferred = resultMetadata?.size() ?: 0,
+                            totalBytes = resultMetadata?.size() ?: 0,
                             metadata = resultMetadata?.toCommon()
                         )
                     ))
@@ -158,23 +162,20 @@ actual class StorageReference internal constructor(
         }
 }
 
-@OptIn(ExperimentalForeignApi::class)
-private fun ByteArray.toNSData(): NSData {
-    return NSData.create(bytes = this.toCValues().ptr, length = this.size.toULong())
+private fun ByteArray.toNSData(): NSData = memScoped {
+    NSData.create(bytes = allocArrayOf(this@toNSData), length = this@toNSData.size.toULong())
 }
 
-@OptIn(ExperimentalForeignApi::class)
 private fun NSData.toByteArray(): ByteArray {
-    val bytes = ByteArray(length.toInt())
-    if (bytes.isNotEmpty()) {
-        bytes.usePinned { pinned ->
-            platform.posix.memcpy(pinned.addressOf(0), this.bytes, length)
+    val size = length.toInt()
+    if (size == 0) return ByteArray(0)
+    return ByteArray(size).apply {
+        usePinned { pinned ->
+            memcpy(pinned.addressOf(0), bytes, length)
         }
     }
-    return bytes
 }
 
-@OptIn(ExperimentalForeignApi::class)
 private fun StorageMetadata.toIos(): FIRStorageMetadata {
     return FIRStorageMetadata().apply {
         contentType?.let { setContentType(it) }
@@ -183,46 +184,45 @@ private fun StorageMetadata.toIos(): FIRStorageMetadata {
         contentEncoding?.let { setContentEncoding(it) }
         contentLanguage?.let { setContentLanguage(it) }
         if (customMetadata.isNotEmpty()) {
-            setCustomMetadata(customMetadata)
+            @Suppress("UNCHECKED_CAST")
+            setCustomMetadata(customMetadata as Map<Any?, *>)
         }
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
 private fun FIRStorageMetadata.toCommon(): StorageMetadata {
     @Suppress("UNCHECKED_CAST")
-    val customMeta = (customMetadata as? Map<String, String>) ?: emptyMap()
+    val customMeta = (customMetadata() as? Map<String, String>) ?: emptyMap()
 
     return StorageMetadata(
-        contentType = contentType,
-        cacheControl = cacheControl,
-        contentDisposition = contentDisposition,
-        contentEncoding = contentEncoding,
-        contentLanguage = contentLanguage,
+        contentType = contentType(),
+        cacheControl = cacheControl(),
+        contentDisposition = contentDisposition(),
+        contentEncoding = contentEncoding(),
+        contentLanguage = contentLanguage(),
         customMetadata = customMeta,
-        name = name,
-        path = path,
-        bucket = bucket,
-        generation = generation?.stringValue,
-        metageneration = metageneration?.stringValue,
-        sizeBytes = size,
-        creationTimeMillis = (timeCreated?.timeIntervalSince1970?.times(1000))?.toLong() ?: 0,
-        updatedTimeMillis = (updated?.timeIntervalSince1970?.times(1000))?.toLong() ?: 0,
-        md5Hash = md5Hash
+        name = name(),
+        path = path(),
+        bucket = bucket(),
+        generation = generation()?.toString(),
+        metageneration = metageneration()?.toString(),
+        sizeBytes = size(),
+        creationTimeMillis = timeCreated()?.let { (it.timeIntervalSince1970 * 1000).toLong() } ?: 0,
+        updatedTimeMillis = updated()?.let { (it.timeIntervalSince1970 * 1000).toLong() } ?: 0,
+        md5Hash = md5Hash()
     )
 }
 
-@OptIn(ExperimentalForeignApi::class)
 private fun FIRStorageListResult.toCommon(): ListResult {
     @Suppress("UNCHECKED_CAST")
-    val itemsList = (items as? List<FIRStorageReference>) ?: emptyList()
+    val itemsList = (items() as? List<FIRStorageReference>) ?: emptyList()
     @Suppress("UNCHECKED_CAST")
-    val prefixesList = (prefixes as? List<FIRStorageReference>) ?: emptyList()
+    val prefixesList = (prefixes() as? List<FIRStorageReference>) ?: emptyList()
 
     return ListResult(
         items = itemsList.map { StorageReference(it) },
         prefixes = prefixesList.map { StorageReference(it) },
-        pageToken = pageToken
+        pageToken = pageToken()
     )
 }
 
@@ -240,27 +240,4 @@ private fun NSError.toStorageException(): StorageException {
         -13040 -> StorageException.Cancelled(null)
         else -> StorageException.Unknown(localizedDescription, null)
     }
-}
-
-@OptIn(ExperimentalForeignApi::class)
-private fun ByteArray.toCValues() = kotlinx.cinterop.ByteVar.pinned { cValuesOf(*this) }
-
-@OptIn(ExperimentalForeignApi::class)
-private inline fun <reified T : kotlinx.cinterop.CVariable> kotlinx.cinterop.CValues<T>.pinned() = this
-
-@OptIn(ExperimentalForeignApi::class)
-private fun <T : kotlinx.cinterop.CVariable> cValuesOf(vararg elements: Byte): kotlinx.cinterop.CValues<kotlinx.cinterop.ByteVar> {
-    return kotlinx.cinterop.cValuesOf(*elements)
-}
-
-@OptIn(ExperimentalForeignApi::class)
-private inline fun ByteArray.usePinned(block: (kotlinx.cinterop.Pinned<ByteArray>) -> Unit) {
-    kotlinx.cinterop.memScoped {
-        block(kotlinx.cinterop.pin(this@usePinned))
-    }
-}
-
-@OptIn(ExperimentalForeignApi::class)
-private fun kotlinx.cinterop.Pinned<ByteArray>.addressOf(index: Int): kotlinx.cinterop.CPointer<kotlinx.cinterop.ByteVar> {
-    return this.get().refTo(index).getPointer(kotlinx.cinterop.MemScope())
 }
