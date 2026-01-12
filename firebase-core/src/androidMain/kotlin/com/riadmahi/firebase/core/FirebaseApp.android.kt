@@ -8,15 +8,20 @@ import com.google.firebase.FirebaseOptions as AndroidFirebaseOptions
  * Application context holder for Firebase initialization.
  */
 object FirebaseContext {
-    internal var applicationContext: Context? = null
-        private set
+    private var _applicationContext: Context? = null
+
+    /**
+     * Returns the application context, or null if not set.
+     */
+    val applicationContext: Context?
+        get() = _applicationContext
 
     /**
      * Sets the application context for Firebase.
      * Must be called before any Firebase initialization.
      */
     fun setContext(context: Context) {
-        applicationContext = context.applicationContext
+        _applicationContext = context.applicationContext
     }
 }
 
