@@ -2,8 +2,8 @@
 
 package com.riadmahi.firebase.firestore
 
-import cocoapods.FirebaseFirestore.FIRCollectionReference
-import cocoapods.FirebaseFirestore.FIRDocumentReference
+import cocoapods.FirebaseFirestoreInternal.FIRCollectionReference
+import cocoapods.FirebaseFirestoreInternal.FIRDocumentReference
 import com.riadmahi.firebase.core.FirebaseResult
 import com.riadmahi.firebase.core.util.awaitVoid
 
