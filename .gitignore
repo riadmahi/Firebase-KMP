@@ -17,3 +17,10 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+.idea
+/build
+.claude
+
+# Firebase config files (contain API keys)
+**/google-services.json
+**/GoogleService-Info.plist
