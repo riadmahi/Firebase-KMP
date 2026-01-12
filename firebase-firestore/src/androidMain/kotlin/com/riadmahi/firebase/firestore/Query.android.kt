@@ -64,8 +64,54 @@ actual open class Query internal constructor(
     actual fun whereNotIn(field: String, values: List<Any>): Query =
         Query(android.whereNotIn(field, values))
 
+    // FieldPath overloads
+    actual fun whereEqualTo(fieldPath: FieldPath, value: Any?): Query =
+        Query(android.whereEqualTo(fieldPath.android, value))
+
+    actual fun whereNotEqualTo(fieldPath: FieldPath, value: Any?): Query =
+        Query(android.whereNotEqualTo(fieldPath.android, value))
+
+    actual fun whereLessThan(fieldPath: FieldPath, value: Any): Query =
+        Query(android.whereLessThan(fieldPath.android, value))
+
+    actual fun whereLessThanOrEqualTo(fieldPath: FieldPath, value: Any): Query =
+        Query(android.whereLessThanOrEqualTo(fieldPath.android, value))
+
+    actual fun whereGreaterThan(fieldPath: FieldPath, value: Any): Query =
+        Query(android.whereGreaterThan(fieldPath.android, value))
+
+    actual fun whereGreaterThanOrEqualTo(fieldPath: FieldPath, value: Any): Query =
+        Query(android.whereGreaterThanOrEqualTo(fieldPath.android, value))
+
+    actual fun whereArrayContains(fieldPath: FieldPath, value: Any): Query =
+        Query(android.whereArrayContains(fieldPath.android, value))
+
+    actual fun whereArrayContainsAny(fieldPath: FieldPath, values: List<Any>): Query =
+        Query(android.whereArrayContainsAny(fieldPath.android, values))
+
+    actual fun whereIn(fieldPath: FieldPath, values: List<Any>): Query =
+        Query(android.whereIn(fieldPath.android, values))
+
+    actual fun whereNotIn(fieldPath: FieldPath, values: List<Any>): Query =
+        Query(android.whereNotIn(fieldPath.android, values))
+
     actual fun orderBy(field: String, direction: Direction): Query =
         Query(android.orderBy(field, direction.toAndroid()))
+
+    actual fun orderBy(fieldPath: FieldPath, direction: Direction): Query =
+        Query(android.orderBy(fieldPath.android, direction.toAndroid()))
+
+    // Aggregation
+    actual fun count(): AggregateQuery =
+        AggregateQuery(android.count())
+
+    actual fun aggregate(vararg aggregateFields: AggregateField): AggregateQuery {
+        require(aggregateFields.isNotEmpty()) { "At least one AggregateField is required" }
+        val androidFields = aggregateFields.map { it.android }
+        return AggregateQuery(
+            android.aggregate(androidFields.first(), *androidFields.drop(1).toTypedArray())
+        )
+    }
 
     actual fun limit(limit: Long): Query =
         Query(android.limit(limit))

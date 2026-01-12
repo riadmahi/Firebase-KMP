@@ -82,10 +82,53 @@ actual open class Query internal constructor(
     actual fun whereNotIn(field: String, values: List<Any>): Query =
         Query(ios.queryWhereField(field, notIn = values))
 
+    // FieldPath overloads
+    actual fun whereEqualTo(fieldPath: FieldPath, value: Any?): Query =
+        Query(ios.queryWhereFieldPath(fieldPath.ios, isEqualTo = value))
+
+    actual fun whereNotEqualTo(fieldPath: FieldPath, value: Any?): Query =
+        Query(ios.queryWhereFieldPath(fieldPath.ios, isNotEqualTo = value))
+
+    actual fun whereLessThan(fieldPath: FieldPath, value: Any): Query =
+        Query(ios.queryWhereFieldPath(fieldPath.ios, isLessThan = value))
+
+    actual fun whereLessThanOrEqualTo(fieldPath: FieldPath, value: Any): Query =
+        Query(ios.queryWhereFieldPath(fieldPath.ios, isLessThanOrEqualTo = value))
+
+    actual fun whereGreaterThan(fieldPath: FieldPath, value: Any): Query =
+        Query(ios.queryWhereFieldPath(fieldPath.ios, isGreaterThan = value))
+
+    actual fun whereGreaterThanOrEqualTo(fieldPath: FieldPath, value: Any): Query =
+        Query(ios.queryWhereFieldPath(fieldPath.ios, isGreaterThanOrEqualTo = value))
+
+    actual fun whereArrayContains(fieldPath: FieldPath, value: Any): Query =
+        Query(ios.queryWhereFieldPath(fieldPath.ios, arrayContains = value))
+
+    actual fun whereArrayContainsAny(fieldPath: FieldPath, values: List<Any>): Query =
+        Query(ios.queryWhereFieldPath(fieldPath.ios, arrayContainsAny = values))
+
+    actual fun whereIn(fieldPath: FieldPath, values: List<Any>): Query =
+        Query(ios.queryWhereFieldPath(fieldPath.ios, `in` = values))
+
+    actual fun whereNotIn(fieldPath: FieldPath, values: List<Any>): Query =
+        Query(ios.queryWhereFieldPath(fieldPath.ios, notIn = values))
+
     actual fun orderBy(field: String, direction: Direction): Query {
         val descending = direction == Direction.DESCENDING
         return Query(ios.queryOrderedByField(field, descending = descending))
     }
+
+    actual fun orderBy(fieldPath: FieldPath, direction: Direction): Query {
+        val descending = direction == Direction.DESCENDING
+        return Query(ios.queryOrderedByFieldPath(fieldPath.ios, descending = descending))
+    }
+
+    // Aggregation
+    actual fun count(): AggregateQuery =
+        AggregateQuery(ios.count())
+
+    actual fun aggregate(vararg aggregateFields: AggregateField): AggregateQuery =
+        AggregateQuery(ios.aggregate(aggregateFields.map { it.ios }))
 
     actual fun limit(limit: Long): Query =
         Query(ios.queryLimitedTo(limit))

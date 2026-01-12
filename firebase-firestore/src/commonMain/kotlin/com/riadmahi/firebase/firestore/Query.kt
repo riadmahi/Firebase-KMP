@@ -17,7 +17,7 @@ expect open class Query {
      */
     fun snapshots(includeMetadataChanges: Boolean = false): Flow<QuerySnapshot>
 
-    // Filtering
+    // Filtering by field name
     fun whereEqualTo(field: String, value: Any?): Query
     fun whereNotEqualTo(field: String, value: Any?): Query
     fun whereLessThan(field: String, value: Any): Query
@@ -29,8 +29,34 @@ expect open class Query {
     fun whereIn(field: String, values: List<Any>): Query
     fun whereNotIn(field: String, values: List<Any>): Query
 
+    // Filtering by FieldPath
+    fun whereEqualTo(fieldPath: FieldPath, value: Any?): Query
+    fun whereNotEqualTo(fieldPath: FieldPath, value: Any?): Query
+    fun whereLessThan(fieldPath: FieldPath, value: Any): Query
+    fun whereLessThanOrEqualTo(fieldPath: FieldPath, value: Any): Query
+    fun whereGreaterThan(fieldPath: FieldPath, value: Any): Query
+    fun whereGreaterThanOrEqualTo(fieldPath: FieldPath, value: Any): Query
+    fun whereArrayContains(fieldPath: FieldPath, value: Any): Query
+    fun whereArrayContainsAny(fieldPath: FieldPath, values: List<Any>): Query
+    fun whereIn(fieldPath: FieldPath, values: List<Any>): Query
+    fun whereNotIn(fieldPath: FieldPath, values: List<Any>): Query
+
     // Ordering
     fun orderBy(field: String, direction: Direction = Direction.ASCENDING): Query
+    fun orderBy(fieldPath: FieldPath, direction: Direction = Direction.ASCENDING): Query
+
+    // Aggregation
+    /**
+     * Returns an [AggregateQuery] that counts the documents matching this query.
+     */
+    fun count(): AggregateQuery
+
+    /**
+     * Returns an [AggregateQuery] that performs the given aggregations.
+     *
+     * @param aggregateFields The aggregations to perform.
+     */
+    fun aggregate(vararg aggregateFields: AggregateField): AggregateQuery
 
     // Pagination
     fun limit(limit: Long): Query
