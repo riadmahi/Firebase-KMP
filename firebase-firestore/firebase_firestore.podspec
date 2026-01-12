@@ -1,7 +1,7 @@
 Pod::Spec.new do |spec|
     spec.name                     = 'firebase_firestore'
     spec.version                  = '1.0.0'
-    spec.homepage                 = 'https://github.com/riadmahi/kmpfire'
+    spec.homepage                 = 'https://github.com/riadmahi/kfire'
     spec.source                   = { :http=> ''}
     spec.authors                  = ''
     spec.license                  = ''
@@ -9,7 +9,7 @@ Pod::Spec.new do |spec|
     spec.vendored_frameworks      = 'build/cocoapods/framework/FirebaseFirestore.framework'
     spec.libraries                = 'c++'
     spec.ios.deployment_target    = '15.0'
-    spec.dependency 'FirebaseFirestore', '11.6.0'
+    spec.dependency 'FirebaseFirestoreInternal', '11.6.0'
     if !Dir.exist?('build/cocoapods/framework/FirebaseFirestore.framework') || Dir.empty?('build/cocoapods/framework/FirebaseFirestore.framework')
         raise "
         Kotlin framework 'FirebaseFirestore' doesn't exist yet, so a proper Xcode project can't be generated.
