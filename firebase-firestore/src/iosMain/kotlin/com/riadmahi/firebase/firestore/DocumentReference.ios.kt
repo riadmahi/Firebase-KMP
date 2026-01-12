@@ -2,9 +2,8 @@
 
 package com.riadmahi.firebase.firestore
 
-import cocoapods.FirebaseFirestore.FIRDocumentReference
-import cocoapods.FirebaseFirestore.FIRDocumentSnapshot
-import cocoapods.FirebaseFirestore.FIRSnapshotListenOptions
+import cocoapods.FirebaseFirestoreInternal.FIRDocumentReference
+import cocoapods.FirebaseFirestoreInternal.FIRDocumentSnapshot
 import com.riadmahi.firebase.core.FirebaseResult
 import com.riadmahi.firebase.core.util.awaitResult
 import com.riadmahi.firebase.core.util.awaitVoid
@@ -38,12 +37,12 @@ actual class DocumentReference internal constructor(
                     callback(snap, error)
                 }
                 Source.SERVER -> ios.getDocumentWithSource(
-                    cocoapods.FirebaseFirestore.FIRFirestoreSource.FIRFirestoreSourceServer
+                    cocoapods.FirebaseFirestoreInternal.FIRFirestoreSource.FIRFirestoreSourceServer
                 ) { snap, error ->
                     callback(snap, error)
                 }
                 Source.CACHE -> ios.getDocumentWithSource(
-                    cocoapods.FirebaseFirestore.FIRFirestoreSource.FIRFirestoreSourceCache
+                    cocoapods.FirebaseFirestoreInternal.FIRFirestoreSource.FIRFirestoreSourceCache
                 ) { snap, error ->
                     callback(snap, error)
                 }
@@ -53,17 +52,14 @@ actual class DocumentReference internal constructor(
     }
 
     actual fun snapshots(includeMetadataChanges: Boolean): Flow<DocumentSnapshot> = callbackFlow {
-        val options = FIRSnapshotListenOptions().apply {
-            this.includeMetadataChanges = includeMetadataChanges
-        }
-        val registration = ios.addSnapshotListenerWithOptions(options) { snapshot, error ->
+        val registration = ios.addSnapshotListenerWithIncludeMetadataChanges(includeMetadataChanges) { snapshot, error ->
             if (error != null) {
                 close(Exception(error.localizedDescription))
-                return@addSnapshotListenerWithOptions
+                return@addSnapshotListenerWithIncludeMetadataChanges
             }
             snapshot?.let { trySend(DocumentSnapshot(it)) }
         }
-        awaitClose { registration.remove() }
+        awaitClose { registration?.remove() }
     }
 
     actual suspend fun set(data: Map<String, Any?>, options: SetOptions): FirebaseResult<Unit> = safeFirestoreCall {
@@ -130,12 +126,12 @@ internal fun Map<String, Any?>.convertForFirestore(): Map<Any?, *> {
     return this.mapValues { (_, value) ->
         when (value) {
             is FieldValue -> value.ios
-            is Timestamp -> value.ios
+            is Timestamp -> value.toNSDate()
             is Map<*, *> -> (value as Map<String, Any?>).convertForFirestore()
             is List<*> -> value.map { item ->
                 when (item) {
                     is FieldValue -> item.ios
-                    is Timestamp -> item.ios
+                    is Timestamp -> item.toNSDate()
                     is Map<*, *> -> (item as Map<String, Any?>).convertForFirestore()
                     else -> item
                 }
