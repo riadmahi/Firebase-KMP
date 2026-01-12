@@ -26,16 +26,15 @@ kotlin {
         }
     }
 
-    // iOS disabled for now - focus on Android first
-    // listOf(
-    //     iosArm64(),
-    //     iosSimulatorArm64()
-    // ).forEach { iosTarget ->
-    //     iosTarget.binaries.framework {
-    //         baseName = "Shared"
-    //         isStatic = true
-    //     }
-    // }
+    listOf(
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+        }
+    }
 
     sourceSets {
         androidMain.dependencies {
