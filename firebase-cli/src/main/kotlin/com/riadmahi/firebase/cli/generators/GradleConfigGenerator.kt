@@ -19,7 +19,8 @@ class GradleConfigGenerator(private val projectRoot: Path) {
     data class FirebaseModules(
         val core: Boolean = true,
         val auth: Boolean = false,
-        val firestore: Boolean = false
+        val firestore: Boolean = false,
+        val storage: Boolean = false
     )
 
     /**
@@ -218,6 +219,7 @@ class GradleConfigGenerator(private val projectRoot: Path) {
         if (modules.core) deps.add("firebase-core")
         if (modules.auth) deps.add("firebase-auth")
         if (modules.firestore) deps.add("firebase-firestore")
+        if (modules.storage) deps.add("firebase-storage")
         return deps
     }
 }
