@@ -3,7 +3,68 @@ package com.riadmahi.firebase.cli.parsers
 import java.nio.file.Path
 import kotlin.io.path.*
 
+/**
+ * Represents the dependency manager used in the iOS project.
+ */
+enum class IosDependencyManager {
+    NONE,
+    COCOAPODS,
+    SPM,
+    BOTH
+}
+
 class IosProjectParser(private val projectRoot: Path) {
+
+    /**
+     * Detect which dependency manager is currently used in the iOS project.
+     */
+    fun detectDependencyManager(): IosDependencyManager {
+        val hasPodfile = findPodfile() != null
+        val hasSpm = hasSpmDependencies()
+
+        return when {
+            hasPodfile && hasSpm -> IosDependencyManager.BOTH
+            hasPodfile -> IosDependencyManager.COCOAPODS
+            hasSpm -> IosDependencyManager.SPM
+            else -> IosDependencyManager.NONE
+        }
+    }
+
+    /**
+     * Find the Podfile in the iOS app directory.
+     */
+    private fun findPodfile(): Path? {
+        val possibleLocations = listOf(
+            "demo/iosApp/Podfile",
+            "iosApp/Podfile"
+        )
+
+        return possibleLocations
+            .map { projectRoot.resolve(it) }
+            .firstOrNull { it.exists() }
+    }
+
+    /**
+     * Check if the project has SPM dependencies in the pbxproj.
+     */
+    private fun hasSpmDependencies(): Boolean {
+        val pbxprojPaths = listOf(
+            "demo/iosApp/iosApp.xcodeproj/project.pbxproj",
+            "iosApp/iosApp.xcodeproj/project.pbxproj",
+            "iosApp.xcodeproj/project.pbxproj"
+        )
+
+        for (pbxprojPath in pbxprojPaths) {
+            val pbxproj = projectRoot.resolve(pbxprojPath)
+            if (pbxproj.exists()) {
+                val parser = PbxprojParser(pbxproj)
+                if (parser.hasSwiftPackages()) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
 
     fun detectBundleId(): String? {
         // Try multiple locations for iOS bundle ID

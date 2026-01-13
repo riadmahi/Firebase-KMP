@@ -8,9 +8,12 @@ import com.riadmahi.firebase.cli.firebase.FirebaseManagementApi
 import com.riadmahi.firebase.cli.firebase.FirebaseProject
 import com.riadmahi.firebase.cli.firebase.FirebaseToolsBridge
 import com.riadmahi.firebase.cli.generators.AndroidConfigGenerator
+import com.riadmahi.firebase.cli.generators.FirebaseIosModules
 import com.riadmahi.firebase.cli.generators.GradleConfigGenerator
 import com.riadmahi.firebase.cli.generators.IosConfigGenerator
+import com.riadmahi.firebase.cli.generators.SpmConfigGenerator
 import com.riadmahi.firebase.cli.parsers.AndroidProjectParser
+import com.riadmahi.firebase.cli.parsers.IosDependencyManager
 import com.riadmahi.firebase.cli.parsers.IosProjectParser
 import com.riadmahi.firebase.cli.ui.KFireTerminal
 import com.riadmahi.firebase.cli.ui.KFireTerminal.WizardStep
@@ -263,6 +266,7 @@ class InitCommand : CliktCommand(name = "init") {
         KFireTerminal.currentStep(4, 5, "Configure Platforms")
 
         var successCount = 0
+        var usedSpm = false  // Track if SPM was chosen for iOS
 
         // Android Configuration
         if (detectedAndroid != null) {
@@ -307,6 +311,122 @@ class InitCommand : CliktCommand(name = "init") {
                 successCount++
             } catch (e: Exception) {
                 spinnerIos.error("iOS setup failed: ${e.message}")
+            }
+
+            // Detect existing dependency manager
+            val currentDepManager = iosParser.detectDependencyManager()
+            val iosGenerator = IosConfigGenerator(projectPath)
+            val spmGenerator = SpmConfigGenerator(projectPath)
+
+            // Show current state if a dependency manager is already configured
+            KFireTerminal.blank()
+            when (currentDepManager) {
+                IosDependencyManager.COCOAPODS -> {
+                    KFireTerminal.info("Detected: ${KFireTerminal.kotlin("CocoaPods")} is currently configured")
+                }
+                IosDependencyManager.SPM -> {
+                    KFireTerminal.info("Detected: ${KFireTerminal.kotlin("Swift Package Manager")} is currently configured")
+                }
+                IosDependencyManager.BOTH -> {
+                    KFireTerminal.warning("Both CocoaPods and SPM are configured (this may cause conflicts)")
+                }
+                IosDependencyManager.NONE -> {}
+            }
+
+            // Ask user for dependency manager preference
+            val depManagerChoice = KFireTerminal.select(
+                "How do you want to manage iOS dependencies?",
+                listOf(
+                    "Swift Package Manager (SPM) ${KFireTerminal.muted("— Recommended, no extra tools needed")}",
+                    "CocoaPods ${KFireTerminal.muted("— Traditional, requires 'pod' command")}"
+                )
+            )
+
+            val iosModules = FirebaseIosModules(
+                core = true,
+                auth = useAuth,
+                firestore = useFirestore,
+                storage = useStorage
+            )
+
+            val wantsSpm = depManagerChoice == 0
+
+            // Handle migration if switching dependency managers
+            if (wantsSpm && currentDepManager == IosDependencyManager.COCOAPODS) {
+                KFireTerminal.blank()
+                if (KFireTerminal.confirm("Migrate from CocoaPods to SPM? This will remove Podfile, Pods/, and .xcworkspace")) {
+                    val spinnerMigrate = KFireTerminal.Spinner("Migrating to SPM...")
+                    spinnerMigrate.start()
+                    spinnerMigrate.updateStatus("Removing CocoaPods configuration...")
+
+                    if (iosGenerator.cleanupCocoaPods()) {
+                        spinnerMigrate.success("CocoaPods configuration removed")
+                    } else {
+                        spinnerMigrate.error("Failed to clean up CocoaPods")
+                        KFireTerminal.warning("You may need to manually remove Podfile and Pods/")
+                    }
+                }
+            } else if (!wantsSpm && currentDepManager == IosDependencyManager.SPM) {
+                KFireTerminal.blank()
+                if (KFireTerminal.confirm("Migrate from SPM to CocoaPods? This will remove SPM packages from the Xcode project")) {
+                    val spinnerMigrate = KFireTerminal.Spinner("Migrating to CocoaPods...")
+                    spinnerMigrate.start()
+                    spinnerMigrate.updateStatus("Removing SPM configuration...")
+
+                    if (spmGenerator.cleanupSpm()) {
+                        spinnerMigrate.success("SPM configuration removed")
+                    } else {
+                        spinnerMigrate.error("Failed to clean up SPM")
+                        KFireTerminal.warning("You may need to manually remove packages in Xcode")
+                    }
+                }
+            }
+
+            // Configure the chosen dependency manager
+            if (wantsSpm) {
+                // SPM Configuration
+                usedSpm = true
+                val spinnerSpm = KFireTerminal.Spinner("Configuring Swift Package Manager...")
+                spinnerSpm.start()
+
+                spinnerSpm.updateStatus("Adding Firebase packages to Xcode project...")
+
+                val spmSuccess = spmGenerator.configureSpm(iosModules)
+
+                if (spmSuccess) {
+                    spinnerSpm.success("SPM configured ${KFireTerminal.muted("→ Firebase packages added to Xcode")}")
+                } else {
+                    spinnerSpm.error("SPM configuration failed")
+                    KFireTerminal.warning("Add Firebase packages manually in Xcode: File → Add Package Dependencies")
+                    KFireTerminal.info("URL: ${KFireTerminal.kotlin(SpmConfigGenerator.FIREBASE_REPO_URL)}")
+                }
+            } else {
+                // CocoaPods Configuration
+                val spinnerPods = KFireTerminal.Spinner("Setting up CocoaPods...")
+                spinnerPods.start()
+
+                if (!iosGenerator.isCocoaPodsInstalled()) {
+                    spinnerPods.error("CocoaPods not installed")
+                    KFireTerminal.warning("Install CocoaPods: ${KFireTerminal.kotlin("sudo gem install cocoapods")}")
+                    KFireTerminal.info("Then run ${KFireTerminal.kotlin("pod install")} in your iosApp directory")
+                } else {
+                    spinnerPods.updateStatus("Generating Podfile...")
+                    val podfilePath = iosGenerator.generatePodfile(iosModules)
+
+                    if (podfilePath != null) {
+                        spinnerPods.updateStatus("Running pod install (this may take a moment)...")
+                        val podSuccess = iosGenerator.runPodInstall()
+
+                        if (podSuccess) {
+                            spinnerPods.success("CocoaPods configured ${KFireTerminal.muted("→ Podfile + pod install")}")
+                        } else {
+                            spinnerPods.error("pod install failed")
+                            KFireTerminal.warning("Run ${KFireTerminal.kotlin("pod install")} manually in your iosApp directory")
+                        }
+                    } else {
+                        spinnerPods.error("Could not find iOS app directory")
+                    }
+                }
             }
         }
 
@@ -374,11 +494,18 @@ class InitCommand : CliktCommand(name = "init") {
                 )
             )
 
-            KFireTerminal.nextSteps(listOf(
-                "Sync your Gradle project ${KFireTerminal.muted("(click 'Sync Now' in IDE)")}",
-                "Check ${KFireTerminal.kotlin("FirebaseInit.kt")} for initialization code",
-                "Start building your app! ${KFireTerminal.fire("🔥")}"
-            ))
+            KFireTerminal.nextSteps(buildList {
+                add("Sync your Gradle project ${KFireTerminal.muted("(click 'Sync Now' in IDE)")}")
+                if (detectedIos != null) {
+                    if (usedSpm) {
+                        add("Open ${KFireTerminal.kotlin("iosApp.xcodeproj")} in Xcode")
+                    } else {
+                        add("Open ${KFireTerminal.kotlin("iosApp.xcworkspace")} ${KFireTerminal.muted("(not .xcodeproj)")}")
+                    }
+                }
+                add("Check ${KFireTerminal.kotlin("FirebaseInit.kt")} for initialization code")
+                add("Start building your app!")
+            })
 
             // Quick reference code block
             KFireTerminal.codeBlock("Quick Start", buildString {
