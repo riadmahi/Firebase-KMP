@@ -25,9 +25,7 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
                 iosSimulatorArm64()
 
                 sourceSets.apply {
-                    commonMain.dependencies {
-                        implementation(project.dependencies.platform("org.jetbrains.kotlin:kotlin-bom"))
-                    }
+                    // No BOM dependencies - Maven Central requires explicit versions
                 }
             }
 
