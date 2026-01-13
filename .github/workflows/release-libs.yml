@@ -1,9 +1,12 @@
 name: Release Libraries
 
 on:
-  push:
-    tags:
-      - 'libs-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 1.0.0)'
+        required: true
+        type: string
 
 jobs:
   release:
@@ -21,13 +24,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Get version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/libs-v}" >> $GITHUB_OUTPUT
-
       - name: Update version in gradle.properties
         run: |
-          sed -i '' "s/^VERSION_NAME=.*/VERSION_NAME=${{ steps.version.outputs.VERSION }}/" gradle.properties
+          sed -i '' "s/^VERSION_NAME=.*/VERSION_NAME=${{ inputs.version }}/" gradle.properties
 
       - name: Decode GPG Key
         run: |
@@ -42,12 +41,20 @@ jobs:
         run: |
           ./gradlew publishAllPublicationsToMavenCentralRepository --no-configuration-cache
 
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "libs-v${{ inputs.version }}" -m "Release libraries v${{ inputs.version }}"
+          git push origin "libs-v${{ inputs.version }}"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Libraries v${{ steps.version.outputs.VERSION }}
+          tag_name: libs-v${{ inputs.version }}
+          name: Libraries v${{ inputs.version }}
           body: |
-            ## Firebase KMP Libraries v${{ steps.version.outputs.VERSION }}
+            ## Firebase KMP Libraries v${{ inputs.version }}
 
             ### Installation
 
@@ -55,27 +62,27 @@ jobs:
 
             ```kotlin
             // Core (required)
-            implementation("com.riadmahi.firebase:firebase-core:${{ steps.version.outputs.VERSION }}")
+            implementation("com.riadmahi.firebase:firebase-core:${{ inputs.version }}")
 
             // Auth
-            implementation("com.riadmahi.firebase:firebase-auth:${{ steps.version.outputs.VERSION }}")
+            implementation("com.riadmahi.firebase:firebase-auth:${{ inputs.version }}")
 
             // Firestore
-            implementation("com.riadmahi.firebase:firebase-firestore:${{ steps.version.outputs.VERSION }}")
+            implementation("com.riadmahi.firebase:firebase-firestore:${{ inputs.version }}")
 
             // Storage
-            implementation("com.riadmahi.firebase:firebase-storage:${{ steps.version.outputs.VERSION }}")
+            implementation("com.riadmahi.firebase:firebase-storage:${{ inputs.version }}")
 
             // Messaging
-            implementation("com.riadmahi.firebase:firebase-messaging:${{ steps.version.outputs.VERSION }}")
+            implementation("com.riadmahi.firebase:firebase-messaging:${{ inputs.version }}")
 
             // Analytics
-            implementation("com.riadmahi.firebase:firebase-analytics:${{ steps.version.outputs.VERSION }}")
+            implementation("com.riadmahi.firebase:firebase-analytics:${{ inputs.version }}")
 
             // Remote Config
-            implementation("com.riadmahi.firebase:firebase-remoteconfig:${{ steps.version.outputs.VERSION }}")
+            implementation("com.riadmahi.firebase:firebase-remoteconfig:${{ inputs.version }}")
 
             // Crashlytics
-            implementation("com.riadmahi.firebase:firebase-crashlytics:${{ steps.version.outputs.VERSION }}")
+            implementation("com.riadmahi.firebase:firebase-crashlytics:${{ inputs.version }}")
             ```
           generate_release_notes: true

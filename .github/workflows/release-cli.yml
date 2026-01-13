@@ -1,9 +1,12 @@
 name: Release CLI
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 1.0.0)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -24,31 +27,35 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Get version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
       - name: Build distribution
         run: ./gradlew :firebase-cli:installDist
 
       - name: Create tarball
         run: |
           cd firebase-cli/build/install
-          tar -czvf kfire-${{ steps.version.outputs.VERSION }}.tar.gz kfire
-          mv kfire-${{ steps.version.outputs.VERSION }}.tar.gz ../../../
+          tar -czvf kfire-${{ inputs.version }}.tar.gz kfire
+          mv kfire-${{ inputs.version }}.tar.gz ../../../
 
       - name: Calculate SHA256
         id: sha256
         run: |
-          SHA=$(shasum -a 256 kfire-${{ steps.version.outputs.VERSION }}.tar.gz | cut -d ' ' -f 1)
+          SHA=$(shasum -a 256 kfire-${{ inputs.version }}.tar.gz | cut -d ' ' -f 1)
           echo "SHA256=$SHA" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "cli-v${{ inputs.version }}" -m "Release CLI v${{ inputs.version }}"
+          git push origin "cli-v${{ inputs.version }}"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: kfire-${{ steps.version.outputs.VERSION }}.tar.gz
+          tag_name: cli-v${{ inputs.version }}
+          files: kfire-${{ inputs.version }}.tar.gz
           body: |
-            ## KFire CLI v${{ steps.version.outputs.VERSION }}
+            ## KFire CLI v${{ inputs.version }}
 
             ### Installation
 
@@ -59,7 +66,7 @@ jobs:
 
             Or download the tarball and run:
             ```bash
-            tar -xzf kfire-${{ steps.version.outputs.VERSION }}.tar.gz
+            tar -xzf kfire-${{ inputs.version }}.tar.gz
             ./kfire/bin/kfire --help
             ```
 
@@ -77,7 +84,7 @@ jobs:
           event-type: update-formula
           client-payload: |
             {
-              "version": "${{ steps.version.outputs.VERSION }}",
+              "version": "${{ inputs.version }}",
               "sha256": "${{ steps.sha256.outputs.SHA256 }}",
-              "url": "https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.VERSION }}/kfire-${{ steps.version.outputs.VERSION }}.tar.gz"
+              "url": "https://github.com/${{ github.repository }}/releases/download/cli-v${{ inputs.version }}/kfire-${{ inputs.version }}.tar.gz"
             }
