@@ -238,7 +238,11 @@ class InitCommand : CliktCommand(name = "init") {
         val moduleOptions = listOf(
             "Authentication ${KFireTerminal.muted("— Sign-in with Email, Google, Apple, Phone")}",
             "Firestore ${KFireTerminal.muted("— NoSQL cloud database with offline sync")}",
-            "Storage ${KFireTerminal.muted("— File uploads, downloads, and cloud storage")}"
+            "Storage ${KFireTerminal.muted("— File uploads, downloads, and cloud storage")}",
+            "Messaging ${KFireTerminal.muted("— Push notifications (FCM/APNs)")}",
+            "Analytics ${KFireTerminal.muted("— Event tracking and user analytics")}",
+            "Remote Config ${KFireTerminal.muted("— Feature flags and A/B testing")}",
+            "Crashlytics ${KFireTerminal.muted("— Crash reporting and stability monitoring")}"
         )
 
         val selectedIndices = KFireTerminal.multiSelect(
@@ -250,6 +254,10 @@ class InitCommand : CliktCommand(name = "init") {
         val useAuth = 0 in selectedIndices
         val useFirestore = 1 in selectedIndices
         val useStorage = 2 in selectedIndices
+        val useMessaging = 3 in selectedIndices
+        val useAnalytics = 4 in selectedIndices
+        val useRemoteConfig = 5 in selectedIndices
+        val useCrashlytics = 6 in selectedIndices
 
         KFireTerminal.blank()
         KFireTerminal.box("Selected Modules", buildList {
@@ -257,6 +265,10 @@ class InitCommand : CliktCommand(name = "init") {
             if (useAuth) add("${KFireTerminal.success("✓")} Authentication")
             if (useFirestore) add("${KFireTerminal.success("✓")} Firestore")
             if (useStorage) add("${KFireTerminal.success("✓")} Storage")
+            if (useMessaging) add("${KFireTerminal.success("✓")} Messaging")
+            if (useAnalytics) add("${KFireTerminal.success("✓")} Analytics")
+            if (useRemoteConfig) add("${KFireTerminal.success("✓")} Remote Config")
+            if (useCrashlytics) add("${KFireTerminal.success("✓")} Crashlytics")
         }, KFireTerminal.BoxStyle.SUCCESS)
 
         // ═══════════════════════════════════════════════════════════════════
@@ -346,7 +358,11 @@ class InitCommand : CliktCommand(name = "init") {
                 core = true,
                 auth = useAuth,
                 firestore = useFirestore,
-                storage = useStorage
+                storage = useStorage,
+                messaging = useMessaging,
+                analytics = useAnalytics,
+                remoteConfig = useRemoteConfig,
+                crashlytics = useCrashlytics
             )
 
             val wantsSpm = depManagerChoice == 0
@@ -446,7 +462,11 @@ class InitCommand : CliktCommand(name = "init") {
                 core = true,
                 auth = useAuth,
                 firestore = useFirestore,
-                storage = useStorage
+                storage = useStorage,
+                messaging = useMessaging,
+                analytics = useAnalytics,
+                remoteConfig = useRemoteConfig,
+                crashlytics = useCrashlytics
             )
 
             val modified = gradleGenerator.configureGradle(modules)
@@ -465,7 +485,7 @@ class InitCommand : CliktCommand(name = "init") {
         spinnerSample.start()
         delay(300)
 
-        generateSampleCode(useAuth, useFirestore, useStorage)
+        generateSampleCode(useAuth, useFirestore, useStorage, useMessaging, useAnalytics, useRemoteConfig, useCrashlytics)
         spinnerSample.success("Sample code created ${KFireTerminal.muted("→ FirebaseInit.kt")}")
 
         // ═══════════════════════════════════════════════════════════════════
@@ -490,7 +510,11 @@ class InitCommand : CliktCommand(name = "init") {
                     listOf("Core Module", KFireTerminal.success("✓ Added")),
                     if (useAuth) listOf("Auth Module", KFireTerminal.success("✓ Added")) else null,
                     if (useFirestore) listOf("Firestore Module", KFireTerminal.success("✓ Added")) else null,
-                    if (useStorage) listOf("Storage Module", KFireTerminal.success("✓ Added")) else null
+                    if (useStorage) listOf("Storage Module", KFireTerminal.success("✓ Added")) else null,
+                    if (useMessaging) listOf("Messaging Module", KFireTerminal.success("✓ Added")) else null,
+                    if (useAnalytics) listOf("Analytics Module", KFireTerminal.success("✓ Added")) else null,
+                    if (useRemoteConfig) listOf("Remote Config Module", KFireTerminal.success("✓ Added")) else null,
+                    if (useCrashlytics) listOf("Crashlytics Module", KFireTerminal.success("✓ Added")) else null
                 )
             )
 
@@ -536,7 +560,15 @@ class InitCommand : CliktCommand(name = "init") {
         }
     }
 
-    private fun generateSampleCode(useAuth: Boolean, useFirestore: Boolean, useStorage: Boolean) {
+    private fun generateSampleCode(
+        useAuth: Boolean,
+        useFirestore: Boolean,
+        useStorage: Boolean,
+        useMessaging: Boolean,
+        useAnalytics: Boolean,
+        useRemoteConfig: Boolean,
+        useCrashlytics: Boolean
+    ) {
         // Find the correct commonMain location based on project structure
         val possibleLocations = listOf(
             "demo/shared/src/commonMain/kotlin/firebase",
@@ -566,6 +598,18 @@ class InitCommand : CliktCommand(name = "init") {
             }
             if (useStorage) {
                 appendLine("import com.riadmahi.firebase.storage.FirebaseStorage")
+            }
+            if (useMessaging) {
+                appendLine("import com.riadmahi.firebase.messaging.FirebaseMessaging")
+            }
+            if (useAnalytics) {
+                appendLine("import com.riadmahi.firebase.analytics.FirebaseAnalytics")
+            }
+            if (useRemoteConfig) {
+                appendLine("import com.riadmahi.firebase.remoteconfig.FirebaseRemoteConfig")
+            }
+            if (useCrashlytics) {
+                appendLine("import com.riadmahi.firebase.crashlytics.FirebaseCrashlytics")
             }
             appendLine()
         }
@@ -631,6 +675,54 @@ class InitCommand : CliktCommand(name = "init") {
                 appendLine("        get() {")
                 appendLine("            check(initialized) { \"Call initialize() first\" }")
                 appendLine("            return FirebaseStorage.getInstance()")
+                appendLine("        }")
+                appendLine()
+            }
+
+            if (useMessaging) {
+                appendLine("    /**")
+                appendLine("     * Get the Firebase Messaging instance.")
+                appendLine("     */")
+                appendLine("    val messaging: FirebaseMessaging")
+                appendLine("        get() {")
+                appendLine("            check(initialized) { \"Call initialize() first\" }")
+                appendLine("            return FirebaseMessaging.getInstance()")
+                appendLine("        }")
+                appendLine()
+            }
+
+            if (useAnalytics) {
+                appendLine("    /**")
+                appendLine("     * Get the Firebase Analytics instance.")
+                appendLine("     */")
+                appendLine("    val analytics: FirebaseAnalytics")
+                appendLine("        get() {")
+                appendLine("            check(initialized) { \"Call initialize() first\" }")
+                appendLine("            return FirebaseAnalytics.getInstance()")
+                appendLine("        }")
+                appendLine()
+            }
+
+            if (useRemoteConfig) {
+                appendLine("    /**")
+                appendLine("     * Get the Firebase Remote Config instance.")
+                appendLine("     */")
+                appendLine("    val remoteConfig: FirebaseRemoteConfig")
+                appendLine("        get() {")
+                appendLine("            check(initialized) { \"Call initialize() first\" }")
+                appendLine("            return FirebaseRemoteConfig.getInstance()")
+                appendLine("        }")
+                appendLine()
+            }
+
+            if (useCrashlytics) {
+                appendLine("    /**")
+                appendLine("     * Get the Firebase Crashlytics instance.")
+                appendLine("     */")
+                appendLine("    val crashlytics: FirebaseCrashlytics")
+                appendLine("        get() {")
+                appendLine("            check(initialized) { \"Call initialize() first\" }")
+                appendLine("            return FirebaseCrashlytics.getInstance()")
                 appendLine("        }")
                 appendLine()
             }

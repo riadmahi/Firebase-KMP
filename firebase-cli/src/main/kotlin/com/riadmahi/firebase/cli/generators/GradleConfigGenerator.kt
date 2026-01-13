@@ -10,7 +10,9 @@ class GradleConfigGenerator(private val projectRoot: Path) {
 
     companion object {
         private const val GOOGLE_SERVICES_VERSION = "4.4.2"
+        private const val CRASHLYTICS_VERSION = "3.0.4"
         private const val GOOGLE_SERVICES_PLUGIN_ID = "com.google.gms.google-services"
+        private const val CRASHLYTICS_PLUGIN_ID = "com.google.firebase.crashlytics"
     }
 
     /**
@@ -20,7 +22,11 @@ class GradleConfigGenerator(private val projectRoot: Path) {
         val core: Boolean = true,
         val auth: Boolean = false,
         val firestore: Boolean = false,
-        val storage: Boolean = false
+        val storage: Boolean = false,
+        val messaging: Boolean = false,
+        val analytics: Boolean = false,
+        val remoteConfig: Boolean = false,
+        val crashlytics: Boolean = false
     )
 
     /**
@@ -31,12 +37,12 @@ class GradleConfigGenerator(private val projectRoot: Path) {
         val modifiedFiles = mutableListOf<String>()
 
         // 1. Update libs.versions.toml
-        if (updateVersionCatalog()) {
+        if (updateVersionCatalog(modules)) {
             modifiedFiles.add("gradle/libs.versions.toml")
         }
 
         // 2. Update root build.gradle.kts
-        if (updateRootBuildGradle()) {
+        if (updateRootBuildGradle(modules)) {
             modifiedFiles.add("build.gradle.kts")
         }
 
@@ -50,77 +56,95 @@ class GradleConfigGenerator(private val projectRoot: Path) {
     }
 
     /**
-     * Updates libs.versions.toml to add google-services plugin.
+     * Updates libs.versions.toml to add google-services and crashlytics plugins.
      */
-    private fun updateVersionCatalog(): Boolean {
+    private fun updateVersionCatalog(modules: FirebaseModules): Boolean {
         val versionCatalogPath = projectRoot.resolve("gradle/libs.versions.toml")
         if (!versionCatalogPath.exists()) return false
 
         var content = versionCatalogPath.readText()
+        var modified = false
 
-        // Check if already configured
-        if (content.contains("googleServices") || content.contains("google-services")) {
-            return false
-        }
+        // Add google-services if not present
+        if (!content.contains("googleServices") && !content.contains("google-services")) {
+            val versionsSection = "[versions]"
+            if (content.contains(versionsSection)) {
+                content = content.replace(
+                    versionsSection,
+                    "$versionsSection\ngoogleServices = \"$GOOGLE_SERVICES_VERSION\""
+                )
+            }
 
-        // Add version
-        val versionsSection = "[versions]"
-        if (content.contains(versionsSection)) {
-            content = content.replace(
-                versionsSection,
-                "$versionsSection\ngoogleServices = \"$GOOGLE_SERVICES_VERSION\""
-            )
-        }
-
-        // Add plugin
-        val pluginsSection = "[plugins]"
-        if (content.contains(pluginsSection)) {
-            // Find the end of the plugins section or end of file
             val pluginEntry = "googleServices = { id = \"$GOOGLE_SERVICES_PLUGIN_ID\", version.ref = \"googleServices\" }"
-
-            // Append at the end of the file (plugins section is usually last)
-            if (!content.trimEnd().endsWith(pluginEntry)) {
+            if (!content.contains(pluginEntry)) {
                 content = content.trimEnd() + "\n$pluginEntry\n"
             }
+            modified = true
         }
 
-        versionCatalogPath.writeText(content)
-        return true
+        // Add crashlytics plugin if crashlytics module is selected and not present
+        if (modules.crashlytics && !content.contains("crashlyticsPlugin") && !content.contains(CRASHLYTICS_PLUGIN_ID)) {
+            // Add version
+            val versionsSection = "[versions]"
+            if (content.contains(versionsSection) && !content.contains("crashlyticsPlugin")) {
+                content = content.replace(
+                    versionsSection,
+                    "$versionsSection\ncrashlyticsPlugin = \"$CRASHLYTICS_VERSION\""
+                )
+            }
+
+            // Add plugin
+            val pluginEntry = "crashlyticsPlugin = { id = \"$CRASHLYTICS_PLUGIN_ID\", version.ref = \"crashlyticsPlugin\" }"
+            if (!content.contains(pluginEntry)) {
+                content = content.trimEnd() + "\n$pluginEntry\n"
+            }
+            modified = true
+        }
+
+        if (modified) {
+            versionCatalogPath.writeText(content)
+        }
+        return modified
     }
 
     /**
-     * Updates root build.gradle.kts to add google-services plugin.
+     * Updates root build.gradle.kts to add google-services and crashlytics plugins.
      */
-    private fun updateRootBuildGradle(): Boolean {
+    private fun updateRootBuildGradle(modules: FirebaseModules): Boolean {
         val rootBuildFile = projectRoot.resolve("build.gradle.kts")
         if (!rootBuildFile.exists()) return false
 
         var content = rootBuildFile.readText()
+        var modified = false
 
-        // Check if already configured
-        if (content.contains("googleServices") && content.contains("apply false")) {
-            return false
-        }
-
-        // Find the plugins block and add google-services
         val pluginsBlockRegex = Regex("""(plugins\s*\{[^}]*)(})""", RegexOption.DOT_MATCHES_ALL)
         val match = pluginsBlockRegex.find(content)
 
         if (match != null) {
-            val pluginsContent = match.groupValues[1]
+            var pluginsContent = match.groupValues[1]
             val closingBrace = match.groupValues[2]
 
-            // Check if not already present
+            // Add google-services if not present
             if (!pluginsContent.contains("googleServices")) {
-                val newPluginsContent = pluginsContent.trimEnd() +
+                pluginsContent = pluginsContent.trimEnd() +
                     "\n    alias(libs.plugins.googleServices) apply false\n"
-                content = content.replace(match.value, newPluginsContent + closingBrace)
+                modified = true
+            }
+
+            // Add crashlytics plugin if crashlytics module is selected and not present
+            if (modules.crashlytics && !pluginsContent.contains("crashlyticsPlugin")) {
+                pluginsContent = pluginsContent.trimEnd() +
+                    "\n    alias(libs.plugins.crashlyticsPlugin) apply false\n"
+                modified = true
+            }
+
+            if (modified) {
+                content = content.replace(match.value, pluginsContent + closingBrace)
                 rootBuildFile.writeText(content)
-                return true
             }
         }
 
-        return false
+        return modified
     }
 
     /**
@@ -140,23 +164,37 @@ class GradleConfigGenerator(private val projectRoot: Path) {
     }
 
     /**
-     * Updates the app's build.gradle.kts to apply google-services and add Firebase dependencies.
+     * Updates the app's build.gradle.kts to apply google-services, crashlytics plugin and add Firebase dependencies.
      */
     private fun updateAppBuildGradle(buildFile: Path, modules: FirebaseModules): Boolean {
         var content = buildFile.readText()
         var modified = false
 
-        // 1. Add google-services plugin if not present
-        if (!content.contains("googleServices")) {
-            val pluginsBlockRegex = Regex("""(plugins\s*\{[^}]*)(})""", RegexOption.DOT_MATCHES_ALL)
-            val match = pluginsBlockRegex.find(content)
+        // 1. Add plugins if not present
+        val pluginsBlockRegex = Regex("""(plugins\s*\{[^}]*)(})""", RegexOption.DOT_MATCHES_ALL)
+        val pluginsMatch = pluginsBlockRegex.find(content)
 
-            if (match != null) {
-                val pluginsContent = match.groupValues[1]
-                val closingBrace = match.groupValues[2]
-                val newPluginsContent = pluginsContent.trimEnd() +
+        if (pluginsMatch != null) {
+            var pluginsContent = pluginsMatch.groupValues[1]
+            val closingBrace = pluginsMatch.groupValues[2]
+            var pluginsModified = false
+
+            // Add google-services plugin
+            if (!pluginsContent.contains("googleServices")) {
+                pluginsContent = pluginsContent.trimEnd() +
                     "\n    alias(libs.plugins.googleServices)\n"
-                content = content.replace(match.value, newPluginsContent + closingBrace)
+                pluginsModified = true
+            }
+
+            // Add crashlytics plugin if crashlytics module is selected
+            if (modules.crashlytics && !pluginsContent.contains("crashlyticsPlugin")) {
+                pluginsContent = pluginsContent.trimEnd() +
+                    "\n    alias(libs.plugins.crashlyticsPlugin)\n"
+                pluginsModified = true
+            }
+
+            if (pluginsModified) {
+                content = content.replace(pluginsMatch.value, pluginsContent + closingBrace)
                 modified = true
             }
         }
@@ -220,6 +258,10 @@ class GradleConfigGenerator(private val projectRoot: Path) {
         if (modules.auth) deps.add("firebase-auth")
         if (modules.firestore) deps.add("firebase-firestore")
         if (modules.storage) deps.add("firebase-storage")
+        if (modules.messaging) deps.add("firebase-messaging")
+        if (modules.analytics) deps.add("firebase-analytics")
+        if (modules.remoteConfig) deps.add("firebase-remoteconfig")
+        if (modules.crashlytics) deps.add("firebase-crashlytics")
         return deps
     }
 }
