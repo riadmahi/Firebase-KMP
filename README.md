@@ -28,6 +28,10 @@
 
 The fastest way to add Firebase to your KMP project.
 
+### Prerequisites
+
+Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com) (just the project — no need to add apps, the CLI does it automatically)
+
 ### 1. Install the CLI
 
 ```bash
