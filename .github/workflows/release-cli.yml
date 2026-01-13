@@ -1,0 +1,83 @@
+name: Release CLI
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build distribution
+        run: ./gradlew :firebase-cli:installDist
+
+      - name: Create tarball
+        run: |
+          cd firebase-cli/build/install
+          tar -czvf kfire-${{ steps.version.outputs.VERSION }}.tar.gz kfire
+          mv kfire-${{ steps.version.outputs.VERSION }}.tar.gz ../../../
+
+      - name: Calculate SHA256
+        id: sha256
+        run: |
+          SHA=$(shasum -a 256 kfire-${{ steps.version.outputs.VERSION }}.tar.gz | cut -d ' ' -f 1)
+          echo "SHA256=$SHA" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: kfire-${{ steps.version.outputs.VERSION }}.tar.gz
+          body: |
+            ## KFire CLI v${{ steps.version.outputs.VERSION }}
+
+            ### Installation
+
+            ```bash
+            brew tap riadmahi/kfire
+            brew install kfire
+            ```
+
+            Or download the tarball and run:
+            ```bash
+            tar -xzf kfire-${{ steps.version.outputs.VERSION }}.tar.gz
+            ./kfire/bin/kfire --help
+            ```
+
+            ### SHA256
+            ```
+            ${{ steps.sha256.outputs.SHA256 }}
+            ```
+          generate_release_notes: true
+
+      - name: Update Homebrew Formula
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          repository: riadmahi/homebrew-kfire
+          event-type: update-formula
+          client-payload: |
+            {
+              "version": "${{ steps.version.outputs.VERSION }}",
+              "sha256": "${{ steps.sha256.outputs.SHA256 }}",
+              "url": "https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.VERSION }}/kfire-${{ steps.version.outputs.VERSION }}.tar.gz"
+            }
