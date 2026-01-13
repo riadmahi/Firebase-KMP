@@ -15,17 +15,11 @@ class MavenPublishConventionPlugin : Plugin<Project> {
                 publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
                 signAllPublications()
 
-                coordinates(
-                    groupId = "com.riadmahi.firebase",
-                    artifactId = project.name,
-                    version = project.version.toString()
-                )
-
                 pom {
                     name.set(project.name)
                     description.set("Firebase SDK for Kotlin Multiplatform")
                     inceptionYear.set("2025")
-                    url.set("https://github.com/riadmahi/kmp-firebase")
+                    url.set("https://github.com/riadmahi/kfire")
 
                     licenses {
                         license {
@@ -38,13 +32,14 @@ class MavenPublishConventionPlugin : Plugin<Project> {
                         developer {
                             id.set("riadmahi")
                             name.set("Riad Mahi")
+                            url.set("https://github.com/riadmahi")
                         }
                     }
 
                     scm {
-                        url.set("https://github.com/riadmahi/kmp-firebase")
-                        connection.set("scm:git:git://github.com/riadmahi/kmp-firebase.git")
-                        developerConnection.set("scm:git:ssh://git@github.com/riadmahi/kmp-firebase.git")
+                        url.set("https://github.com/riadmahi/kfire")
+                        connection.set("scm:git:git://github.com/riadmahi/kfire.git")
+                        developerConnection.set("scm:git:ssh://git@github.com/riadmahi/kfire.git")
                     }
                 }
             }

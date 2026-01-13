@@ -2,168 +2,187 @@
   <img src="https://firebase.google.com/static/images/brand-guidelines/logo-logomark.png" alt="Firebase" width="80" height="80">
 </p>
 
-<h1 align="center">KFire</h1>
+<h1 align="center">Firebase KMP</h1>
 
 <p align="center">
   <strong>Firebase SDK for Kotlin Multiplatform</strong>
 </p>
 
 <p align="center">
+  <a href="https://central.sonatype.com/search?q=com.riadmahi.firebase"><img src="https://img.shields.io/maven-central/v/com.riadmahi.firebase/firebase-core?color=blue&label=Maven%20Central" alt="Maven Central"></a>
   <img src="https://img.shields.io/badge/Kotlin-2.3.0-7F52FF?logo=kotlin&logoColor=white" alt="Kotlin">
   <img src="https://img.shields.io/badge/Platform-Android%20|%20iOS-34A853" alt="Platform">
-  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+</p>
+
+<p align="center">
+  <a href="#get-started">Get Started</a> •
+  <a href="#usage">Usage</a> •
+  <a href="#modules">Modules</a> •
+  <a href="#manual-installation">Manual Installation</a>
 </p>
 
 ---
 
-## Quick Start
+## Get Started
 
-### 1. Prerequisites
+The fastest way to add Firebase to your KMP project.
 
-**Firebase CLI:**
-
-```bash
-npm install -g firebase-tools
-firebase login
-```
-
-**Firebase Project:**
-
-Go to [console.firebase.google.com](https://console.firebase.google.com) and create a project:
-1. Click "Add project" and enter your project name
-2. When asked to add an app, **select Flutter**
-3. Skip all the Flutter setup steps (we'll use KFire instead)
-4. Your project is ready
-
-### 2. Install KFire CLI
+### 1. Install the CLI
 
 ```bash
-./gradlew :firebase-cli:installDist
-sudo ln -sf $(pwd)/firebase-cli/build/install/kfire/bin/kfire /usr/local/bin/kfire
+brew tap riadmahi/kfire
+brew install kfire
 ```
 
-### 3. Run the Setup Wizard
+### 2. Run the setup wizard
 
 ```bash
 kfire init
 ```
 
+### 3. That's it!
+
+The CLI automatically:
+
+| Step | What it does |
+|------|--------------|
+| **Firebase config** | Downloads `google-services.json` and `GoogleService-Info.plist` |
+| **Gradle dependencies** | Adds Firebase modules to your `build.gradle.kts` |
+| **iOS dependencies** | Configures **SPM** or **CocoaPods** (your choice) |
+| **Sample code** | Generates `FirebaseInit.kt` with initialization code |
+
 ```
-╭────────────────────────────────────────────────────────────╮
-│                                                            │
-│   Welcome to KFire - Firebase for Kotlin Multiplatform     │
-│                                                            │
-╰────────────────────────────────────────────────────────────╯
+kfire init
 
-◆ Pre-flight Checks
+  ✓ firebase-tools installed
+  ✓ Authenticated with Firebase
+  ✓ Project scanned
 
-  ✓ firebase-tools is installed
-  ✓ Authenticated as riad@example.com
-  ✓ Android: com.example.myapp
-  ✓ iOS: com.example.myapp
+  Select your Firebase project
+  ● my-app (my-app-12345)
 
-◆ Select Firebase Project
-
-  ● my-awesome-app (my-awesome-app-12345)
-  ○ another-project (another-project-67890)
-  ○ Create a new project
-
-◆ Select Modules
-
-  ✓ Core (required)
+  Which Firebase services do you need?
   ✓ Authentication
   ✓ Firestore
-  ✓ Storage
-  ○ Messaging
-  ○ Analytics
-  ○ Remote Config
-  ○ Crashlytics
+  ○ Storage
 
-◆ Generating Configuration
+  How do you want to manage iOS dependencies?
+  ● Swift Package Manager (SPM) — Recommended
+  ○ CocoaPods
 
-  ✓ Created google-services.json
-  ✓ Created GoogleService-Info.plist
-  ✓ Updated build.gradle.kts
-  ✓ Generated FirebaseInit.kt
+  ✓ Android configured → google-services.json
+  ✓ iOS configured → GoogleService-Info.plist
+  ✓ SPM configured → Firebase packages added to Xcode
+  ✓ Gradle updated → firebase-core, firebase-auth, firebase-firestore
 
-🎉 Firebase configured successfully!
+  Setup Complete!
 ```
 
-### 4. Start Using Firebase
+---
+
+## Usage
 
 ```kotlin
 // Initialize once at app startup
 FirebaseApp.initialize()
+```
 
-// Authentication
+### Authentication
+
+```kotlin
 val auth = FirebaseAuth.getInstance()
+
+// Sign in
 auth.signInWithEmailAndPassword("user@example.com", "password")
 
-// Firestore
-val db = FirebaseFirestore.getInstance()
-db.collection("cities").document("LA").set(mapOf(
-    "name" to "Los Angeles",
-    "country" to "USA"
-))
+// Create account
+auth.createUserWithEmailAndPassword("user@example.com", "password")
 
-// Storage
+// Current user
+val user = auth.currentUser
+```
+
+### Firestore
+
+```kotlin
+val db = FirebaseFirestore.getInstance()
+
+// Add a city
+val city = hashMapOf(
+    "name" to "Los Angeles",
+    "state" to "CA",
+    "country" to "USA",
+    "capital" to false,
+    "population" to 3900000
+)
+db.collection("cities").document("LA").set(city)
+
+// Get a city
+val document = db.collection("cities").document("LA").get()
+
+// Query cities
+val cities = db.collection("cities")
+    .whereEqualTo("country", "USA")
+    .whereGreaterThan("population", 1000000)
+    .get()
+```
+
+### Storage
+
+```kotlin
 val storage = FirebaseStorage.getInstance()
-storage.reference.child("images/photo.jpg").putBytes(imageData)
+val ref = storage.reference.child("images/mountains.jpg")
+
+// Upload
+ref.putBytes(imageData)
+
+// Download URL
+val url = ref.downloadUrl
 ```
 
 ---
 
 ## Modules
 
-| Module | Description | Documentation |
-|--------|-------------|---------------|
-| **Core** | Firebase initialization | [README](firebase-core/README.md) |
-| **Auth** | Authentication (Email, Google, Apple, Phone) | [README](firebase-auth/README.md) |
-| **Firestore** | NoSQL cloud database | [README](firebase-firestore/README.md) |
-| **Storage** | File storage | [README](firebase-storage/README.md) |
-| **Messaging** | Push notifications (FCM) | [README](firebase-messaging/README.md) |
-| **Analytics** | User behavior tracking | [README](firebase-analytics/README.md) |
-| **Remote Config** | Feature flags & configuration | [README](firebase-remoteconfig/README.md) |
-| **Crashlytics** | Crash reporting | [README](firebase-crashlytics/README.md) |
+| Module | Artifact | Description |
+|--------|----------|-------------|
+| **Core** | `firebase-core` | Firebase initialization (required) |
+| **Auth** | `firebase-auth` | Authentication (Email, Google, Apple, Phone) |
+| **Firestore** | `firebase-firestore` | NoSQL cloud database |
+| **Storage** | `firebase-storage` | File storage and uploads |
+| **Messaging** | `firebase-messaging` | Push notifications (FCM/APNs) |
+| **Analytics** | `firebase-analytics` | Event tracking and user analytics |
+| **Remote Config** | `firebase-remoteconfig` | Feature flags and A/B testing |
+| **Crashlytics** | `firebase-crashlytics` | Crash reporting |
 
 ---
 
-## CLI Commands
-
-```bash
-kfire init                    # Full setup wizard
-kfire configure               # Quick configuration
-kfire login                   # Authenticate with Firebase
-```
-
-**Options:**
-
-```bash
-kfire configure \
-  --project=my-firebase-project \
-  --modules=core,auth,firestore \
-  --platforms=android,ios
-```
-
----
-
-## Manual Setup
+## Manual Installation
 
 <details>
-<summary>If you prefer manual configuration</summary>
+<summary>If you prefer to configure everything manually</summary>
 
-### Add Dependencies
+### Gradle Dependencies
 
 ```kotlin
-// build.gradle.kts
-commonMain.dependencies {
+// build.gradle.kts (commonMain)
+dependencies {
     implementation("com.riadmahi.firebase:firebase-core:1.0.0")
     implementation("com.riadmahi.firebase:firebase-auth:1.0.0")
     implementation("com.riadmahi.firebase:firebase-firestore:1.0.0")
+    // ... add modules you need
 }
 ```
 
-### Android
+### Firebase Console
+
+1. Go to [console.firebase.google.com](https://console.firebase.google.com)
+2. Create or select a project
+3. Add Android app → Download `google-services.json` → Place in your Android app module
+4. Add iOS app → Download `GoogleService-Info.plist` → Add to Xcode project
+
+### Android Setup
 
 ```kotlin
 // Root build.gradle.kts
@@ -177,11 +196,29 @@ plugins {
 }
 ```
 
-Place `google-services.json` in your Android app module.
+### iOS Dependencies
 
-### iOS
+Choose **SPM** or **CocoaPods**:
 
-Add Firebase via CocoaPods or SPM and place `GoogleService-Info.plist` in your Xcode project.
+**Swift Package Manager**
+1. In Xcode: File → Add Package Dependencies
+2. Enter: `https://github.com/firebase/firebase-ios-sdk.git`
+3. Select the Firebase products you need
+
+**CocoaPods**
+```ruby
+# Podfile
+platform :ios, '15.0'
+use_frameworks!
+
+target 'YourApp' do
+  pod 'FirebaseCore'
+  pod 'FirebaseAuth'
+  pod 'FirebaseFirestore'
+end
+```
+
+Then run `pod install` and open `.xcworkspace`.
 
 </details>
 
@@ -191,7 +228,7 @@ Add Firebase via CocoaPods or SPM and place `GoogleService-Info.plist` in your X
 
 | Platform | Minimum Version |
 |----------|-----------------|
-| Android | API 24 |
+| Android | API 24 (Android 7.0) |
 | iOS | 15.0 |
 | Kotlin | 2.3.0 |
 
@@ -199,11 +236,20 @@ Add Firebase via CocoaPods or SPM and place `GoogleService-Info.plist` in your X
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+```
+Copyright 2025 Riad Mahi
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+```
 
 ---
 
 <p align="center">
+  <a href="https://github.com/riadmahi/kfire">GitHub</a> •
   <a href="https://firebase.google.com/docs">Firebase Docs</a> •
   <a href="https://kotlinlang.org/docs/multiplatform.html">Kotlin Multiplatform</a>
 </p>

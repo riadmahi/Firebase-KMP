@@ -1,4 +1,4 @@
-# firebase-cli (kmpfire)
+# firebase-cli (kfire)
 
 Command-line interface for configuring Firebase in Kotlin Multiplatform projects.
 
@@ -13,7 +13,7 @@ Similar to FlutterFire CLI, this tool automates Firebase setup for KMP projects.
 ./gradlew :firebase-cli:installDist
 
 # Run the CLI
-./firebase-cli/build/install/firebase-cli/bin/kmpfire --help
+./firebase-cli/build/install/firebase-cli/bin/kfire --help
 ```
 
 ### Add to PATH (Optional)
@@ -23,28 +23,28 @@ Similar to FlutterFire CLI, this tool automates Firebase setup for KMP projects.
 export PATH="$PATH:/path/to/firebase/firebase-cli/build/install/firebase-cli/bin"
 
 # Now you can run from anywhere
-kmpfire --help
+kfire --help
 ```
 
 ## Commands
 
-### kmpfire configure
+### kfire configure
 
 Configure Firebase for your KMP project.
 
 ```bash
 # Interactive mode
-kmpfire configure
+kfire configure
 
 # With options
-kmpfire configure \
+kfire configure \
   --project=my-firebase-project \
   --android-package=com.example.app \
   --ios-bundle-id=com.example.app \
   --platforms=android,ios
 
 # Non-interactive mode (accept defaults)
-kmpfire configure -y
+kfire configure -y
 ```
 
 #### Options
@@ -68,12 +68,12 @@ kmpfire configure -y
    - `GoogleService-Info.plist` for iOS
 5. **Places files** in correct locations
 
-### kmpfire login
+### kfire login
 
 Authenticate with Firebase.
 
 ```bash
-kmpfire login
+kfire login
 ```
 
 This delegates to `firebase-tools` CLI for authentication. Make sure you have `firebase-tools` installed:
@@ -84,7 +84,7 @@ npm install -g firebase-tools
 
 ## Output Structure
 
-After running `kmpfire configure`:
+After running `kfire configure`:
 
 ```
 your-kmp-project/

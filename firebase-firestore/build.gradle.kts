@@ -12,7 +12,7 @@ kotlin {
 
     cocoapods {
         summary = "Firebase Firestore KMP wrapper"
-        homepage = "https://github.com/riadmahi/kmpfire"
+        homepage = "https://github.com/riadmahi/kfire"
         ios.deploymentTarget = "15.0"
         version = "1.0.0"
 
