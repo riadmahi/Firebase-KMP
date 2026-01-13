@@ -3,6 +3,8 @@ import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import com.vanniktech.maven.publish.SonatypeHost
+import com.vanniktech.maven.publish.KotlinMultiplatform
+import com.vanniktech.maven.publish.JavadocJar
 
 class MavenPublishConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
@@ -14,6 +16,8 @@ class MavenPublishConventionPlugin : Plugin<Project> {
             extensions.configure<MavenPublishBaseExtension> {
                 publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
                 signAllPublications()
+
+                configure(KotlinMultiplatform(javadocJar = JavadocJar.Empty()))
 
                 pom {
                     name.set(project.name)
