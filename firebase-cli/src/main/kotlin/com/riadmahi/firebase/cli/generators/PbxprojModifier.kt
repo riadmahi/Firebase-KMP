@@ -175,21 +175,22 @@ class PbxprojModifier(private val document: PbxprojDocument) {
         projectId: String,
         packageRefIds: List<String>
     ): String {
-        // Find the PBXProject section and add packageReferences
-        val projectRegex = Regex(
-            """($projectId\s*/\*[^*]*\*/\s*=\s*\{[^}]*)(targets\s*=\s*\([^)]*\);)""",
-            RegexOption.DOT_MATCHES_ALL
-        )
-
+        // Find the targets line in PBXProject section and insert packageReferences before it
         val packageRefsArray = packageRefIds.joinToString(",\n\t\t\t\t") { id ->
             "$id /* XCRemoteSwiftPackageReference */"
         }
 
-        return projectRegex.replace(content) { matchResult ->
-            val prefix = matchResult.groupValues[1]
-            val targets = matchResult.groupValues[2]
+        // Look for targets = (...) in the PBXProject section and insert packageReferences before it
+        val targetsRegex = Regex(
+            """(\t\t\tprojectRoot = "";)\n(\t\t\ttargets = \()""",
+            RegexOption.MULTILINE
+        )
 
-            "${prefix}packageReferences = (\n\t\t\t\t$packageRefsArray,\n\t\t\t);\n\t\t\t$targets"
+        return targetsRegex.replace(content) { matchResult ->
+            val projectRoot = matchResult.groupValues[1]
+            val targetsStart = matchResult.groupValues[2]
+
+            "$projectRoot\n\t\t\tpackageReferences = (\n\t\t\t\t$packageRefsArray,\n\t\t\t);\n$targetsStart"
         }
     }
 
