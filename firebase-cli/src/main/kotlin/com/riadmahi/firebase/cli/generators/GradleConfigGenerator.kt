@@ -1,5 +1,7 @@
 package com.riadmahi.firebase.cli.generators
 
+import java.net.HttpURLConnection
+import java.net.URI
 import java.nio.file.Path
 import kotlin.io.path.*
 
@@ -13,7 +15,43 @@ class GradleConfigGenerator(private val projectRoot: Path) {
         private const val CRASHLYTICS_VERSION = "3.0.4"
         private const val GOOGLE_SERVICES_PLUGIN_ID = "com.google.gms.google-services"
         private const val CRASHLYTICS_PLUGIN_ID = "com.google.firebase.crashlytics"
+
+        // KFire Maven coordinates
+        private const val KFIRE_GROUP_ID = "com.riadmahi.firebase"
+        private const val MAVEN_METADATA_URL = "https://repo1.maven.org/maven2/com/riadmahi/firebase/firebase-core/maven-metadata.xml"
+        private const val FALLBACK_VERSION = "0.1.0"
+
+        /**
+         * Fetches the latest KFire version from Maven Central.
+         * Falls back to FALLBACK_VERSION if fetch fails.
+         */
+        fun fetchLatestVersion(): String {
+            return try {
+                val url = URI(MAVEN_METADATA_URL).toURL()
+                val connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 5000
+                connection.readTimeout = 5000
+                connection.requestMethod = "GET"
+
+                if (connection.responseCode == 200) {
+                    val content = connection.inputStream.bufferedReader().readText()
+                    // Parse <release> or <latest> tag from maven-metadata.xml
+                    val releaseRegex = Regex("""<release>([^<]+)</release>""")
+                    val latestRegex = Regex("""<latest>([^<]+)</latest>""")
+
+                    releaseRegex.find(content)?.groupValues?.get(1)
+                        ?: latestRegex.find(content)?.groupValues?.get(1)
+                        ?: FALLBACK_VERSION
+                } else {
+                    FALLBACK_VERSION
+                }
+            } catch (e: Exception) {
+                FALLBACK_VERSION
+            }
+        }
     }
+
+    private val kfireVersion: String by lazy { fetchLatestVersion() }
 
     /**
      * Configuration options for Firebase modules.
@@ -56,7 +94,7 @@ class GradleConfigGenerator(private val projectRoot: Path) {
     }
 
     /**
-     * Updates libs.versions.toml to add google-services and crashlytics plugins.
+     * Updates libs.versions.toml to add google-services, crashlytics plugins, and KFire dependencies.
      */
     private fun updateVersionCatalog(modules: FirebaseModules): Boolean {
         val versionCatalogPath = projectRoot.resolve("gradle/libs.versions.toml")
@@ -65,39 +103,48 @@ class GradleConfigGenerator(private val projectRoot: Path) {
         var content = versionCatalogPath.readText()
         var modified = false
 
-        // Add google-services if not present
-        if (!content.contains("googleServices") && !content.contains("google-services")) {
-            val versionsSection = "[versions]"
-            if (content.contains(versionsSection)) {
-                content = content.replace(
-                    versionsSection,
-                    "$versionsSection\ngoogleServices = \"$GOOGLE_SERVICES_VERSION\""
-                )
-            }
+        // Ensure [libraries] section exists
+        if (!content.contains("[libraries]")) {
+            content = content.trimEnd() + "\n\n[libraries]\n"
+            modified = true
+        }
 
-            val pluginEntry = "googleServices = { id = \"$GOOGLE_SERVICES_PLUGIN_ID\", version.ref = \"googleServices\" }"
-            if (!content.contains(pluginEntry)) {
-                content = content.trimEnd() + "\n$pluginEntry\n"
-            }
+        // Ensure [plugins] section exists
+        if (!content.contains("[plugins]")) {
+            content = content.trimEnd() + "\n\n[plugins]\n"
+            modified = true
+        }
+
+        // Add google-services version and plugin if not present
+        if (!content.contains("googleServices") && !content.contains("google-services")) {
+            content = addToSection(content, "[versions]", "googleServices = \"$GOOGLE_SERVICES_VERSION\"")
+            content = addToSection(content, "[plugins]", "googleServices = { id = \"$GOOGLE_SERVICES_PLUGIN_ID\", version.ref = \"googleServices\" }")
             modified = true
         }
 
         // Add crashlytics plugin if crashlytics module is selected and not present
         if (modules.crashlytics && !content.contains("crashlyticsPlugin") && !content.contains(CRASHLYTICS_PLUGIN_ID)) {
-            // Add version
-            val versionsSection = "[versions]"
-            if (content.contains(versionsSection) && !content.contains("crashlyticsPlugin")) {
-                content = content.replace(
-                    versionsSection,
-                    "$versionsSection\ncrashlyticsPlugin = \"$CRASHLYTICS_VERSION\""
-                )
-            }
+            content = addToSection(content, "[versions]", "crashlyticsPlugin = \"$CRASHLYTICS_VERSION\"")
+            content = addToSection(content, "[plugins]", "crashlyticsPlugin = { id = \"$CRASHLYTICS_PLUGIN_ID\", version.ref = \"crashlyticsPlugin\" }")
+            modified = true
+        }
 
-            // Add plugin
-            val pluginEntry = "crashlyticsPlugin = { id = \"$CRASHLYTICS_PLUGIN_ID\", version.ref = \"crashlyticsPlugin\" }"
-            if (!content.contains(pluginEntry)) {
-                content = content.trimEnd() + "\n$pluginEntry\n"
+        // Add KFire version and libraries if not present
+        if (!content.contains("kfire")) {
+            content = addToSection(content, "[versions]", "kfire = \"$kfireVersion\"")
+
+            // Add selected KFire libraries
+            val firebaseLibs = buildFirebaseLibraries(modules)
+            for (lib in firebaseLibs) {
+                content = addToSection(content, "[libraries]", lib)
             }
+            modified = true
+        }
+
+        // Add coroutines if not present
+        if (!content.contains("coroutines") && !content.contains("kotlinx-coroutines")) {
+            content = addToSection(content, "[versions]", "coroutines = \"1.9.0\"")
+            content = addToSection(content, "[libraries]", "kotlinx-coroutines-core = { group = \"org.jetbrains.kotlinx\", name = \"kotlinx-coroutines-core\", version.ref = \"coroutines\" }")
             modified = true
         }
 
@@ -105,6 +152,36 @@ class GradleConfigGenerator(private val projectRoot: Path) {
             versionCatalogPath.writeText(content)
         }
         return modified
+    }
+
+    /**
+     * Adds an entry to a specific section in the TOML file.
+     */
+    private fun addToSection(content: String, section: String, entry: String): String {
+        val sectionIndex = content.indexOf(section)
+        if (sectionIndex == -1) return content
+
+        // Find the end of the section line
+        val afterSection = content.indexOf("\n", sectionIndex)
+        if (afterSection == -1) return content.trimEnd() + "\n$entry\n"
+
+        return content.substring(0, afterSection + 1) + "$entry\n" + content.substring(afterSection + 1)
+    }
+
+    /**
+     * Builds the list of KFire library entries for libs.versions.toml.
+     */
+    private fun buildFirebaseLibraries(modules: FirebaseModules): List<String> {
+        val libs = mutableListOf<String>()
+        if (modules.core) libs.add("kfire-core = { group = \"$KFIRE_GROUP_ID\", name = \"firebase-core\", version.ref = \"kfire\" }")
+        if (modules.auth) libs.add("kfire-auth = { group = \"$KFIRE_GROUP_ID\", name = \"firebase-auth\", version.ref = \"kfire\" }")
+        if (modules.firestore) libs.add("kfire-firestore = { group = \"$KFIRE_GROUP_ID\", name = \"firebase-firestore\", version.ref = \"kfire\" }")
+        if (modules.storage) libs.add("kfire-storage = { group = \"$KFIRE_GROUP_ID\", name = \"firebase-storage\", version.ref = \"kfire\" }")
+        if (modules.messaging) libs.add("kfire-messaging = { group = \"$KFIRE_GROUP_ID\", name = \"firebase-messaging\", version.ref = \"kfire\" }")
+        if (modules.analytics) libs.add("kfire-analytics = { group = \"$KFIRE_GROUP_ID\", name = \"firebase-analytics\", version.ref = \"kfire\" }")
+        if (modules.remoteConfig) libs.add("kfire-remoteconfig = { group = \"$KFIRE_GROUP_ID\", name = \"firebase-remoteconfig\", version.ref = \"kfire\" }")
+        if (modules.crashlytics) libs.add("kfire-crashlytics = { group = \"$KFIRE_GROUP_ID\", name = \"firebase-crashlytics\", version.ref = \"kfire\" }")
+        return libs
     }
 
     /**
@@ -199,9 +276,9 @@ class GradleConfigGenerator(private val projectRoot: Path) {
             }
         }
 
-        // 2. Add Firebase dependencies to commonMain
-        val firebaseDeps = buildFirebaseDependencies(modules)
-        if (firebaseDeps.isNotEmpty() && !content.contains("firebase-core")) {
+        // 2. Add Firebase dependencies to commonMain using libs catalog
+        val firebaseDepsRefs = buildFirebaseDependencyRefs(modules)
+        if (firebaseDepsRefs.isNotEmpty() && !content.contains("libs.kfire")) {
             val commonMainDepsRegex = Regex(
                 """(commonMain\.dependencies\s*\{[^}]*)(})""",
                 RegexOption.DOT_MATCHES_ALL
@@ -212,8 +289,8 @@ class GradleConfigGenerator(private val projectRoot: Path) {
                 val depsContent = match.groupValues[1]
                 val closingBrace = match.groupValues[2]
                 val newDepsContent = depsContent.trimEnd() + "\n\n" +
-                    "            // Firebase KMP\n" +
-                    firebaseDeps.joinToString("\n") { "            implementation(project(\":$it\"))" } +
+                    "            // Firebase KMP (KFire)\n" +
+                    firebaseDepsRefs.joinToString("\n") { "            implementation($it)" } +
                     "\n        "
                 content = content.replace(match.value, newDepsContent + closingBrace)
                 modified = true
@@ -221,7 +298,7 @@ class GradleConfigGenerator(private val projectRoot: Path) {
         }
 
         // 3. Add coroutines dependency if not present
-        if (!content.contains("kotlinx.coroutines.core") && !content.contains("coroutines-core")) {
+        if (!content.contains("coroutines")) {
             val commonMainDepsRegex = Regex(
                 """(commonMain\.dependencies\s*\{[^}]*)(})""",
                 RegexOption.DOT_MATCHES_ALL
@@ -231,14 +308,10 @@ class GradleConfigGenerator(private val projectRoot: Path) {
             if (match != null) {
                 val depsContent = match.groupValues[1]
                 val closingBrace = match.groupValues[2]
-
-                // Check if coroutines is already in the deps
-                if (!depsContent.contains("coroutines")) {
-                    val newDepsContent = depsContent.trimEnd() +
-                        "\n            implementation(libs.kotlinx.coroutines.core)\n        "
-                    content = content.replace(match.value, newDepsContent + closingBrace)
-                    modified = true
-                }
+                val newDepsContent = depsContent.trimEnd() +
+                    "\n            implementation(libs.kotlinx.coroutines.core)\n        "
+                content = content.replace(match.value, newDepsContent + closingBrace)
+                modified = true
             }
         }
 
@@ -250,18 +323,18 @@ class GradleConfigGenerator(private val projectRoot: Path) {
     }
 
     /**
-     * Builds the list of Firebase module dependencies.
+     * Builds the list of Firebase libs catalog references for build.gradle.kts.
      */
-    private fun buildFirebaseDependencies(modules: FirebaseModules): List<String> {
-        val deps = mutableListOf<String>()
-        if (modules.core) deps.add("firebase-core")
-        if (modules.auth) deps.add("firebase-auth")
-        if (modules.firestore) deps.add("firebase-firestore")
-        if (modules.storage) deps.add("firebase-storage")
-        if (modules.messaging) deps.add("firebase-messaging")
-        if (modules.analytics) deps.add("firebase-analytics")
-        if (modules.remoteConfig) deps.add("firebase-remoteconfig")
-        if (modules.crashlytics) deps.add("firebase-crashlytics")
-        return deps
+    private fun buildFirebaseDependencyRefs(modules: FirebaseModules): List<String> {
+        val refs = mutableListOf<String>()
+        if (modules.core) refs.add("libs.kfire.core")
+        if (modules.auth) refs.add("libs.kfire.auth")
+        if (modules.firestore) refs.add("libs.kfire.firestore")
+        if (modules.storage) refs.add("libs.kfire.storage")
+        if (modules.messaging) refs.add("libs.kfire.messaging")
+        if (modules.analytics) refs.add("libs.kfire.analytics")
+        if (modules.remoteConfig) refs.add("libs.kfire.remoteconfig")
+        if (modules.crashlytics) refs.add("libs.kfire.crashlytics")
+        return refs
     }
 }

@@ -122,22 +122,35 @@ class IosProjectParser(private val projectRoot: Path) {
         val productBundleRegex = Regex("""PRODUCT_BUNDLE_IDENTIFIER\s*=\s*(.+)""")
 
         bundleIdRegex.find(content)?.groupValues?.get(1)?.trim()?.let {
-            if (isValidBundleId(it)) return it
+            val cleaned = cleanBundleId(it)
+            if (isValidBundleId(cleaned)) return cleaned
         }
         productBundleRegex.find(content)?.groupValues?.get(1)?.trim()?.let {
-            if (isValidBundleId(it)) return it
+            val cleaned = cleanBundleId(it)
+            if (isValidBundleId(cleaned)) return cleaned
         }
 
         return null
+    }
+
+    /**
+     * Remove Xcode variables like $(VAR) or ${VAR} from bundle ID.
+     * Example: "org.example.app$(TEAM_ID)" -> "org.example.app"
+     */
+    private fun cleanBundleId(bundleId: String): String {
+        return bundleId
+            .replace(Regex("""\$\([^)]*\)"""), "")  // Remove $(VAR)
+            .replace(Regex("""\$\{[^}]*\}"""), "")  // Remove ${VAR}
+            .trimEnd('.')  // Clean trailing dots if variable was at the end
     }
 
     private fun extractBundleIdFromPbxproj(pbxprojFile: Path): String? {
         val content = pbxprojFile.readText()
         val bundleIdRegex = Regex("""PRODUCT_BUNDLE_IDENTIFIER\s*=\s*["']?([^;"'\n]+)["']?""")
 
-        // Find all matches and return the first valid one (without Xcode variables)
+        // Find all matches and return the first valid one (clean Xcode variables first)
         bundleIdRegex.findAll(content).forEach { match ->
-            val bundleId = match.groupValues[1].trim()
+            val bundleId = cleanBundleId(match.groupValues[1].trim())
             if (isValidBundleId(bundleId)) {
                 return bundleId
             }
