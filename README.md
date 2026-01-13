@@ -49,6 +49,7 @@ The CLI automatically:
 |------|--------------|
 | **Firebase config** | Downloads `google-services.json` and `GoogleService-Info.plist` |
 | **Gradle dependencies** | Adds Firebase modules to your `build.gradle.kts` |
+| **Gradle plugins** | Adds `google-services` + `crashlytics` plugin (if selected) |
 | **iOS dependencies** | Configures **SPM** or **CocoaPods** (your choice) |
 | **Sample code** | Generates `FirebaseInit.kt` with initialization code |
 
@@ -66,6 +67,10 @@ kfire init
   ✓ Authentication
   ✓ Firestore
   ○ Storage
+  ○ Messaging
+  ✓ Analytics
+  ○ Remote Config
+  ✓ Crashlytics
 
   How do you want to manage iOS dependencies?
   ● Swift Package Manager (SPM) — Recommended
@@ -74,7 +79,7 @@ kfire init
   ✓ Android configured → google-services.json
   ✓ iOS configured → GoogleService-Info.plist
   ✓ SPM configured → Firebase packages added to Xcode
-  ✓ Gradle updated → firebase-core, firebase-auth, firebase-firestore
+  ✓ Gradle updated → firebase-core, firebase-auth, firebase-firestore, firebase-analytics, firebase-crashlytics
 
   Setup Complete!
 ```
