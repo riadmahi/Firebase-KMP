@@ -3,7 +3,22 @@ package com.riadmahi.firebase.cli.generators
 import java.nio.file.Path
 import kotlin.io.path.*
 
+data class FirebaseIosModules(
+    val core: Boolean = true,
+    val auth: Boolean = false,
+    val firestore: Boolean = false,
+    val storage: Boolean = false,
+    val messaging: Boolean = false,
+    val analytics: Boolean = false,
+    val remoteConfig: Boolean = false,
+    val crashlytics: Boolean = false
+)
+
 class IosConfigGenerator(private val projectRoot: Path) {
+
+    companion object {
+        const val FIREBASE_IOS_VERSION = "11.6.0"
+    }
 
     fun writeGoogleServiceInfoPlist(content: String) {
         // Find the appropriate location for GoogleService-Info.plist
@@ -24,5 +39,150 @@ class IosConfigGenerator(private val projectRoot: Path) {
 
         // Write the file
         targetPath.writeText(content)
+    }
+
+    /**
+     * Find the iOS app directory containing the Xcode project.
+     */
+    private fun findIosAppDirectory(): Path? {
+        val possibleLocations = listOf(
+            "demo/iosApp",
+            "iosApp"
+        )
+
+        return possibleLocations
+            .map { projectRoot.resolve(it) }
+            .firstOrNull { dir ->
+                dir.exists() && dir.listDirectoryEntries("*.xcodeproj").isNotEmpty()
+            }
+    }
+
+    /**
+     * Generate or update the Podfile with Firebase dependencies.
+     * Returns the path to the Podfile if created/updated, null otherwise.
+     */
+    fun generatePodfile(modules: FirebaseIosModules): Path? {
+        val iosAppDir = findIosAppDirectory() ?: return null
+        val podfilePath = iosAppDir.resolve("Podfile")
+
+        val pods = buildList {
+            if (modules.core) add("FirebaseCore")
+            if (modules.auth) add("FirebaseAuth")
+            if (modules.firestore) add("FirebaseFirestoreInternal")
+            if (modules.storage) add("FirebaseStorage")
+            if (modules.messaging) add("FirebaseMessaging")
+            if (modules.analytics) add("FirebaseAnalytics")
+            if (modules.remoteConfig) add("FirebaseRemoteConfig")
+            if (modules.crashlytics) add("FirebaseCrashlytics")
+        }
+
+        // Detect the target name from xcodeproj
+        val targetName = iosAppDir.listDirectoryEntries("*.xcodeproj")
+            .firstOrNull()
+            ?.fileName
+            ?.toString()
+            ?.removeSuffix(".xcodeproj")
+            ?: "iosApp"
+
+        val podfileContent = buildString {
+            appendLine("platform :ios, '15.0'")
+            appendLine()
+            appendLine("target '$targetName' do")
+            appendLine("  use_frameworks!")
+            appendLine()
+            appendLine("  # Firebase dependencies (managed by KFire CLI)")
+            for (pod in pods) {
+                appendLine("  pod '$pod', '$FIREBASE_IOS_VERSION'")
+            }
+            appendLine("end")
+            appendLine()
+            appendLine("post_install do |installer|")
+            appendLine("  installer.pods_project.targets.each do |target|")
+            appendLine("    target.build_configurations.each do |config|")
+            appendLine("      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'")
+            appendLine("    end")
+            appendLine("  end")
+            appendLine("end")
+        }
+
+        podfilePath.writeText(podfileContent)
+        return podfilePath
+    }
+
+    /**
+     * Run `pod install` in the iOS app directory.
+     * Returns true if successful, false otherwise.
+     */
+    fun runPodInstall(): Boolean {
+        val iosAppDir = findIosAppDirectory() ?: return false
+
+        return try {
+            val process = ProcessBuilder("pod", "install")
+                .directory(iosAppDir.toFile())
+                .redirectErrorStream(true)
+                .start()
+
+            val exitCode = process.waitFor()
+            exitCode == 0
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Check if CocoaPods is installed.
+     */
+    fun isCocoaPodsInstalled(): Boolean {
+        return try {
+            val process = ProcessBuilder("pod", "--version")
+                .redirectErrorStream(true)
+                .start()
+            process.waitFor() == 0
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Clean up CocoaPods configuration (for migration to SPM).
+     * Removes Podfile, Podfile.lock, and Pods directory.
+     * Returns true if cleanup was successful.
+     */
+    fun cleanupCocoaPods(): Boolean {
+        val iosAppDir = findIosAppDirectory() ?: return false
+
+        return try {
+            // Remove Podfile
+            val podfile = iosAppDir.resolve("Podfile")
+            if (podfile.exists()) podfile.deleteExisting()
+
+            // Remove Podfile.lock
+            val podfileLock = iosAppDir.resolve("Podfile.lock")
+            if (podfileLock.exists()) podfileLock.deleteExisting()
+
+            // Remove Pods directory recursively
+            val podsDir = iosAppDir.resolve("Pods")
+            if (podsDir.exists()) {
+                podsDir.toFile().deleteRecursively()
+            }
+
+            // Remove .xcworkspace (CocoaPods generates this)
+            val xcworkspaces = iosAppDir.listDirectoryEntries("*.xcworkspace")
+            xcworkspaces.forEach { workspace ->
+                workspace.toFile().deleteRecursively()
+            }
+
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Check if CocoaPods is configured in the project.
+     */
+    fun hasCocoaPodsConfig(): Boolean {
+        val iosAppDir = findIosAppDirectory() ?: return false
+        return iosAppDir.resolve("Podfile").exists()
     }
 }
