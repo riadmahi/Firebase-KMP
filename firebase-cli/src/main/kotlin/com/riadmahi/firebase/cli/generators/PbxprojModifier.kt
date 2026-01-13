@@ -33,6 +33,11 @@ class PbxprojModifier(private val document: PbxprojDocument) {
     fun addSwiftPackages(packages: List<SwiftPackage>): String {
         if (packages.isEmpty()) return document.content
 
+        // Check if Firebase packages already exist
+        if (document.content.contains("firebase-ios-sdk")) {
+            return document.content // Already configured, skip
+        }
+
         val targetId = document.mainTargetId
             ?: throw IllegalStateException("No native target found in pbxproj")
         val frameworksPhaseId = document.frameworksBuildPhaseId
@@ -154,7 +159,8 @@ class PbxprojModifier(private val document: PbxprojDocument) {
 
         return filesRegex.replace(content) { matchResult ->
             val prefix = matchResult.groupValues[1]
-            val existingFiles = matchResult.groupValues[2].trim()
+            // Clean existing files: remove trailing commas and whitespace
+            val existingFiles = matchResult.groupValues[2].trim().trimEnd(',').trim()
 
             if (existingFiles.isEmpty()) {
                 "$prefix\n\t\t\t\t$newEntries,\n\t\t\t)"
