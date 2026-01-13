@@ -33,7 +33,6 @@ kotlin {
         }
 
         androidMain.dependencies {
-            implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.firebase.common.android)
         }
