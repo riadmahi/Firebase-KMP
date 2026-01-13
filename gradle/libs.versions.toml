@@ -60,16 +60,16 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 
-# Firebase Android
+# Firebase Android (versions from BOM 34.7.0)
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseAndroidBom" }
-firebase-common-android = { module = "com.google.firebase:firebase-common" }
-firebase-auth-android = { module = "com.google.firebase:firebase-auth" }
-firebase-firestore-android = { module = "com.google.firebase:firebase-firestore" }
-firebase-storage-android = { module = "com.google.firebase:firebase-storage" }
-firebase-messaging-android = { module = "com.google.firebase:firebase-messaging" }
-firebase-analytics-android = { module = "com.google.firebase:firebase-analytics" }
-firebase-config-android = { module = "com.google.firebase:firebase-config" }
-firebase-crashlytics-android = { module = "com.google.firebase:firebase-crashlytics" }
+firebase-common-android = { module = "com.google.firebase:firebase-common", version = "22.0.1" }
+firebase-auth-android = { module = "com.google.firebase:firebase-auth", version = "24.0.1" }
+firebase-firestore-android = { module = "com.google.firebase:firebase-firestore", version = "26.0.2" }
+firebase-storage-android = { module = "com.google.firebase:firebase-storage", version = "22.0.1" }
+firebase-messaging-android = { module = "com.google.firebase:firebase-messaging", version = "25.0.1" }
+firebase-analytics-android = { module = "com.google.firebase:firebase-analytics", version = "23.0.0" }
+firebase-config-android = { module = "com.google.firebase:firebase-config", version = "23.0.1" }
+firebase-crashlytics-android = { module = "com.google.firebase:firebase-crashlytics", version = "20.0.3" }
 
 # CLI
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
