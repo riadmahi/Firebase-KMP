@@ -13,5 +13,5 @@ plugins {
 
 allprojects {
     group = "com.riadmahi.firebase"
-    version = "0.1.0-SNAPSHOT"
+    version = findProperty("VERSION_NAME") ?: "1.0.0-SNAPSHOT"
 }
